@@ -1,0 +1,66 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+  --color-bg: #0b0d10;
+  --color-side: #101318;
+  --color-surface: #14171c;
+  --color-raised: #1b2027;
+  --color-line: #2a313b;
+  --color-ink: #e8eaee;
+  --color-muted: #98a2ae;
+  --color-brand: #e11d2e;
+  --color-brand-soft: #ff4653;
+  --color-ok: #2fbf71;
+  --color-warn: #e5a50a;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.9;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+/* اسکرول‌بار تیره */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* لینک‌های محتوایی راهنما */
+.guide-link {
+  color: var(--color-brand-soft);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transition: color 0.15s;
+}
+.guide-link:hover {
+  color: #ff6b75;
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+}
