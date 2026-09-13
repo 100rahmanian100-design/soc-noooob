@@ -173,7 +173,12 @@ async function readJSON<T>(key: string): Promise<T | null> {
   if (blob) {
     try {
       const meta = await blob.head(key);
-      const res = await fetch(meta.url, { cache: 'no-store' });
+      // در استورهای Private، خواندن URL نیاز به توکن دارد؛ در استور Public بی‌ضرر است
+      const token = process.env.BLOB_READ_WRITE_TOKEN;
+      const res = await fetch(meta.url, {
+        cache: 'no-store',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (!res.ok) return null;
       const text = await res.text();
       if (!text) return null;
