@@ -7,6 +7,9 @@ interface Props {
   phase: string;
   phaseTitle: string;
   account: PublicAccount;
+  /** deep-link از مرکز اعلان‌ها: شناسه کامنت هدف */
+  focusId?: string | null;
+  focusNonce?: number;
 }
 
 const roleBadge = (role: string) =>
@@ -30,7 +33,7 @@ function fmtDate(iso: string): string {
   }
 }
 
-export default function CommentSection({ phase, phaseTitle, account }: Props) {
+export default function CommentSection({ phase, phaseTitle, account, focusId, focusNonce }: Props) {
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -54,6 +57,20 @@ export default function CommentSection({ phase, phaseTitle, account }: Props) {
     void load();
   }, [load]);
 
+  /** هايلایت + اسکرول به پیام هدف (deep-link اعلان) */
+  useEffect(() => {
+    if (!focusId) return;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(`c-${focusId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('flash-target');
+        window.setTimeout(() => el.classList.remove('flash-target'), 2600);
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [focusId, focusNonce, comments]);
+
   const roots = useMemo(() => comments.filter((c) => c.parentId === null), [comments]);
   const repliesOf = useCallback(
     (id: string) => comments.filter((c) => c.parentId === id),
@@ -71,6 +88,7 @@ export default function CommentSection({ phase, phaseTitle, account }: Props) {
     }
     setText('');
     await load();
+    window.dispatchEvent(new Event('notifications-updated'));
   };
 
   const postReply = async (parentId: string) => {
@@ -86,6 +104,7 @@ export default function CommentSection({ phase, phaseTitle, account }: Props) {
     }
     setReplyDrafts((d) => ({ ...d, [parentId]: '' }));
     await load();
+    window.dispatchEvent(new Event('notifications-updated'));
   };
 
   return (
