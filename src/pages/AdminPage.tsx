@@ -91,3 +91,121 @@ function MiniBar({ pct, small = false }: { pct: number; small?: boolean }) {
   );
 }
 
+export default function AdminPage({ account }: Props) {
+  return (
+    <div className="space-y-7">
+      <header>
+        <p className="text-xs font-bold tracking-widest text-accent">ADMIN MONITORING</p>
+        <h1 className="mt-1 text-2xl font-extrabold">پنل مدیریت و پایش پیشرفت</h1>
+        <p className="mt-1 text-sm leading-7 text-muted">
+          {account.role === 'superadmin'
+            ? 'به‌عنوان سوپر ادمین می‌توانید همه کاربران را ببینید، ادمین و کاربر بسازید و به همه گفت‌وگوها پاسخ دهید.'
+            : 'به‌عنوان ادمین می‌توانید کاربران ساخته‌ی خودتان را ببینید، کاربر عادی بسازید و به پیام‌های آنها پاسخ دهید.'}
+        </p>
+      </header>
+      <CreateUserForm account={account} />
+      <UsersProgressTable account={account} />
+      <CommentInbox account={account} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------ ساخت حساب */
+function CreateUserForm({ account }: { account: PublicAccount }) {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const canCreateAdmin = account.role === 'superadmin';
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    setBusy(true);
+    try {
+      const res = await apiCreateUser(username.trim(), password, role, email.trim());
+      if (res.error) setError(res.error);
+      else {
+        setMessage(res.message ?? 'حساب ساخته شد.');
+        setUsername('');
+        setEmail('');
+        setPassword('');
+        window.dispatchEvent(new Event('users-changed'));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-5">
+      <h2 className="mb-4 flex items-center gap-2 text-base font-bold">
+        <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+        ساخت حساب جدید
+      </h2>
+      {message && <p className="mb-3 rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-xs text-ok">{message}</p>}
+      {error && <p className="mb-3 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
+      <form onSubmit={submit} className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        {canCreateAdmin && (
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold text-muted">نقش</span>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as 'admin' | 'user')}
+              className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+            >
+              <option value="user">کاربر</option>
+              <option value="admin">ادمین</option>
+            </select>
+          </label>
+        )}
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-muted">نام کاربری</span>
+          <input
+            dir="ltr"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-muted">ایمیل</span>
+          <input
+            dir="ltr"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-muted">رمز عبور</span>
+          <input
+            dir="ltr"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+          />
+        </label>
+        <div className="flex items-end">
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full rounded-lg border-0 bg-accent py-2.5 font-bold text-ink transition hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? 'در حال ساخت…' : 'ساخت حساب'}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
