@@ -10,7 +10,7 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { handleAuth, handleData, type ApiCtx } from './api/_lib/handlers';
+import { handleAuth, handleData, type ApiCtx } from './api/_lib/handlers.js';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const app = express();

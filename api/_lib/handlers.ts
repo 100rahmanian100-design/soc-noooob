@@ -22,7 +22,7 @@ import {
   saveUserData,
   signSession,
   verifyPassword,
-} from './core';
+} from './core.js';
 
 export interface ApiCtx {
   body: Record<string, unknown>;

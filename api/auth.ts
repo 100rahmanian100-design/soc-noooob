@@ -3,7 +3,7 @@
  * منطق اصلی در api/_lib/handlers.ts و api/_lib/core.ts است.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleAuth, type ApiCtx, type ApiResult } from './_lib/handlers';
+import { handleAuth, type ApiCtx, type ApiResult } from './_lib/handlers.js';
 
 function parseCookies(header: string | undefined): Record<string, string> {
   const out: Record<string, string> = {};

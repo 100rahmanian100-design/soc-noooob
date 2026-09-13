@@ -54,7 +54,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse):
 
   // مرحله ۵: ایمپورت core (جایی که loadSecret و توابع crypto اجرا می‌شوند)
   try {
-    const core = (await import('./_lib/core')) as Record<string, unknown>;
+    const core = (await import('./_lib/core.js')) as Record<string, unknown>;
     push('import-core', true, `exports=${Object.keys(core).slice(0, 8).join(',')}`);
     // مرحله ۶: صدا زدن یک تابع سبک core
     try {
@@ -71,7 +71,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse):
 
   // مرحله ۷: ایمپورت handlers
   try {
-    const handlers = (await import('./_lib/handlers')) as Record<string, unknown>;
+    const handlers = (await import('./_lib/handlers.js')) as Record<string, unknown>;
     push('import-handlers', true, `exports=${Object.keys(handlers).join(',')}`);
   } catch (e) {
     push('import-handlers', false, String((e as Error)?.stack ?? e).slice(0, 800));
