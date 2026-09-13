@@ -36,10 +36,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(405).json({ error: 'فقط POST مجاز است.' });
     return;
   }
-  const ctx: ApiCtx = {
-    body: (typeof req.body === 'object' && req.body !== null ? req.body : {}) as Record<string, unknown>,
-    cookies: parseCookies(req.headers.cookie),
-    isSecure: process.env.VERCEL === '1',
-  };
-  applyResult(res, await handleAuth(ctx));
+  try {
+    const ctx: ApiCtx = {
+      body: (typeof req.body === 'object' && req.body !== null ? req.body : {}) as Record<string, unknown>,
+      cookies: parseCookies(req.headers.cookie),
+      isSecure: process.env.VERCEL === '1',
+    };
+    applyResult(res, await handleAuth(ctx));
+  } catch (e) {
+    // به‌جای کرش خام فانکشن، خطای معنادار برگردانید (شرح در Runtime Logs ثبت می‌شود)
+    console.error('[api/auth]', e);
+    res.status(500).json({ error: 'خطای ذخیره‌سازی. لطفاً دوباره تلاش کنید و در صورت تکرار، Runtime Logs را بررسی کنید.' });
+  }
 }

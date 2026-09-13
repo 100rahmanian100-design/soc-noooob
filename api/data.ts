@@ -21,11 +21,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(405).json({ error: 'فقط POST مجاز است.' });
     return;
   }
-  const ctx: ApiCtx = {
-    body: (typeof req.body === 'object' && req.body !== null ? req.body : {}) as Record<string, unknown>,
-    cookies: parseCookies(req.headers.cookie),
-    isSecure: process.env.VERCEL === '1',
-  };
-  const result: ApiResult = await handleData(ctx);
-  res.status(result.status).json(result.body);
+  try {
+    const ctx: ApiCtx = {
+      body: (typeof req.body === 'object' && req.body !== null ? req.body : {}) as Record<string, unknown>,
+      cookies: parseCookies(req.headers.cookie),
+      isSecure: process.env.VERCEL === '1',
+    };
+    const result: ApiResult = await handleData(ctx);
+    res.status(result.status).json(result.body);
+  } catch (e) {
+    console.error('[api/data]', e);
+    res.status(500).json({ error: 'خطای ذخیره‌سازی. لطفاً دوباره تلاش کنید و در صورت تکرار، Runtime Logs را بررسی کنید.' });
+  }
 }

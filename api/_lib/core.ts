@@ -22,6 +22,7 @@ import {
 } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { head, put } from '@vercel/blob';
 
 // ---------------------------------------------------------------------------
 // پیکربندی
@@ -107,21 +108,7 @@ export interface CommentsFile {
 // لایه ذخیره‌سازی (Blob در پروداکشن / فایل محلی در توسعه)
 // ---------------------------------------------------------------------------
 
-let blobApi: typeof import('@vercel/blob') | null | undefined;
-
-async function getBlob() {
-  if (blobApi !== undefined) return blobApi;
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      blobApi = await import('@vercel/blob');
-    } catch {
-      blobApi = null;
-    }
-  } else {
-    blobApi = null;
-  }
-  return blobApi;
-}
+const blobApi = !!process.env.BLOB_READ_WRITE_TOKEN;
 
 const blobKeys = {
   accounts: 'accounts.json.enc',
@@ -179,13 +166,12 @@ function writeLocalJSON(file: string, value: unknown): void {
 
 /** خواندن یک سند JSON از Blob (یا فایل محلی) — null اگر وجود نداشته باشد */
 async function readJSON<T>(key: string): Promise<T | null> {
-  const blob = await getBlob();
-  if (blob) {
+  if (blobApi) {
     try {
-      const meta = await blob.head(key);
-      // در استورهای Private، خواندن URL نیاز به توکن دارد؛ در استور Public بی‌ضرر است
+      const meta = await head(key);
+      // در استور Private، خواندن URL توکن می‌خواهد؛ در استور Public بی‌ضرر است
       const token = process.env.BLOB_READ_WRITE_TOKEN;
-      const res = await fetch(meta.url, {
+      const res = await fetch(meta.downloadUrl ?? meta.url, {
         cache: 'no-store',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -206,9 +192,8 @@ async function readJSON<T>(key: string): Promise<T | null> {
 
 /** نوشتن یک سند JSON در Blob (یا فایل محلی) */
 async function writeJSON(key: string, value: unknown): Promise<void> {
-  const blob = await getBlob();
-  if (blob) {
-    await blob.put(key, encryptJSON(value), { access: 'public', addRandomSuffix: false });
+  if (blobApi) {
+    await put(key, encryptJSON(value), { access: 'private', addRandomSuffix: false });
     return;
   }
   writeLocalJSON(key, value);
