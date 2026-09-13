@@ -22,7 +22,19 @@ import {
 } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { head, put } from '@vercel/blob';
+
+/**
+ * لایه REST مستقیم Vercel Blob با fetch بومی.
+ * — دلیل: باندل ESM ساخته‌شده توسط Vercel برای ‏@vercel/blob‏ (از طریق ‏@vercel/oidc‏ → ‏jose‏)
+ *   با خطای «Dynamic require of node:buffer» می‌میرد (FUNCTION_INVOCATION_FAILED).
+ *   این کلاینت فقط از fetch و node:crypto استفاده می‌کند و همان پروتکل SDK را پیاده می‌کند:
+ *   • نوشتن (put):      PUT https://vercel.com/api/blob/?pathname=<key>
+ *                       headers: authorization Bearer توکن، x-api-version، x-api-blob-request-id،
+ *                       x-vercel-blob-store-id، x-vercel-blob-access، x-add-random-suffix: 0،
+ *                       x-allow-overwrite: 1
+ *   • خواندن (private): GET https://<storeId>.private.blob.vercel-storage.com/<key>
+ *                       با هدر authorization (همان کاری که متد get در SDK می‌کند).
+ */
 
 // ---------------------------------------------------------------------------
 // پیکربندی
@@ -108,7 +120,68 @@ export interface CommentsFile {
 // لایه ذخیره‌سازی (Blob در پروداکشن / فایل محلی در توسعه)
 // ---------------------------------------------------------------------------
 
-const blobApi = !!process.env.BLOB_READ_WRITE_TOKEN;
+const blobToken = (): string | null => {
+  const t = process.env.BLOB_READ_WRITE_TOKEN;
+  return t && t.trim() !== '' ? t.trim() : null;
+};
+
+/** storeId از انتهای توکن read_write (همان parseStoreIdFromReadWriteToken در SDK) */
+function storeIdFromToken(token: string): string {
+  const parts = token.split('_');
+  const id = parts[3] ?? '';
+  return id.startsWith('store_') ? id.slice('store_'.length) : id;
+}
+
+const BLOB_API_BASE =
+  process.env.VERCEL_BLOB_API_URL?.trim() || 'https://vercel.com/api/blob';
+const BLOB_API_VERSION =
+  process.env.VERCEL_BLOB_API_VERSION_OVERRIDE?.trim() || '12';
+
+/** نوشتن مستقیم در Blob — معادل put(key, body, {access:'private', addRandomSuffix:false}) */
+async function blobPut(key: string, body: string): Promise<void> {
+  const token = blobToken();
+  if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is not set');
+  const storeId = storeIdFromToken(token);
+  const url = `${BLOB_API_BASE}/?${new URLSearchParams({ pathname: key }).toString()}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    body,
+    headers: {
+      authorization: `Bearer ${token}`,
+      'x-api-version': BLOB_API_VERSION,
+      'x-api-blob-request-id': `${storeId}:${Date.now()}:${Math.random().toString(16).slice(2)}`,
+      'x-vercel-blob-store-id': storeId,
+      'x-vercel-blob-access': 'private',
+      'x-add-random-suffix': '0',
+      'x-allow-overwrite': '1',
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`blob put failed (${res.status}): ${text.slice(0, 300)}`);
+  }
+}
+
+/** خواندن مستقیم از Blob خصوصی — معادل get(key, {access:'private'}) */
+async function blobGet(key: string): Promise<string | null> {
+  const token = blobToken();
+  if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is not set');
+  const storeId = storeIdFromToken(token);
+  const url = `https://${storeId}.private.blob.vercel-storage.com/${key}?cache=0`;
+  const res = await fetch(url, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`blob get failed (${res.status}): ${text.slice(0, 300)}`);
+  }
+  return res.text();
+}
+
+const blobApi = !!blobToken();
 
 const blobKeys = {
   accounts: 'accounts.json.enc',
@@ -167,24 +240,12 @@ function writeLocalJSON(file: string, value: unknown): void {
 /** خواندن یک سند JSON از Blob (یا فایل محلی) — null اگر وجود نداشته باشد */
 async function readJSON<T>(key: string): Promise<T | null> {
   if (blobApi) {
+    const text = await blobGet(key);
+    if (text == null || text === '') return null; // هنوز ساخته نشده
     try {
-      const meta = await head(key);
-      // در استور Private، خواندن URL توکن می‌خواهد؛ در استور Public بی‌ضرر است
-      const token = process.env.BLOB_READ_WRITE_TOKEN;
-      const res = await fetch(meta.downloadUrl ?? meta.url, {
-        cache: 'no-store',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (!res.ok) return null;
-      const text = await res.text();
-      if (!text) return null;
-      try {
-        return decryptJSON<T>(text) ?? (JSON.parse(text) as T);
-      } catch {
-        return null;
-      }
+      return decryptJSON<T>(text) ?? (JSON.parse(text) as T);
     } catch {
-      return null; // پیدا نشد
+      return null;
     }
   }
   return readLocalJSON<T>(key);
@@ -193,7 +254,7 @@ async function readJSON<T>(key: string): Promise<T | null> {
 /** نوشتن یک سند JSON در Blob (یا فایل محلی) */
 async function writeJSON(key: string, value: unknown): Promise<void> {
   if (blobApi) {
-    await put(key, encryptJSON(value), { access: 'private', addRandomSuffix: false });
+    await blobPut(key, encryptJSON(value));
     return;
   }
   writeLocalJSON(key, value);
