@@ -153,6 +153,11 @@ body {
   transition: width 0.4s ease;
 }
 
+/* پیام‌های کامنت — برای deep-link اسکرول با تاپ‌بار چسبان تداخل نکنند */
+[id^='c-'] {
+  scroll-margin-top: 86px;
+}
+
 @media print {
   body {
     background: #fff;
