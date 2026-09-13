@@ -62,7 +62,7 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
           <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-brand text-2xl font-extrabold text-white shadow-lg shadow-brand/30">
             E
           </span>
-          <h1 className="text-2xl font-extrabold">آکادمی SOC ارمنیان</h1>
+          <h1 className="text-2xl font-extrabold">SOC Noooob</h1>
           <p className="mt-1 text-sm text-muted">
             راهنمای شروع به کار و دوره آزمایشی — ورود به سامانه
           </p>

@@ -72,8 +72,8 @@ export default function App() {
               E
             </span>
             <span className="text-start leading-tight">
-              <span className="block text-sm font-bold">SOC آکادمی ارمنیان</span>
-              <span className="block text-[11px] text-muted">Ermanian SOC Academy</span>
+              <span className="block text-sm font-bold">SOC Noooob</span>
+              <span className="block text-[11px] text-muted">راهنمای شروع به کار و دوره آزمایشی</span>
             </span>
           </button>
 
@@ -131,7 +131,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-line py-6 text-center text-xs text-muted">
-        Ermanian SOC Academy — راهنمای شروع به کار و دوره آزمایشی · شهریور–مهر ۱۴۰۵
+        SOC Noooob — راهنمای شروع به کار و دوره آزمایشی · شهریور–مهر ۱۴۰۵
       </footer>
     </div>
   );

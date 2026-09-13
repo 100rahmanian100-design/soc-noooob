@@ -27,7 +27,7 @@ import { join } from 'node:path';
 // پیکربندی
 // ---------------------------------------------------------------------------
 
-export const INVITE_CODE = process.env.INVITE_CODE ?? 'ermanian';
+export const INVITE_CODE = process.env.INVITE_CODE ?? 'soc-noooob';
 const DATA_DIR = join(process.cwd(), '.data');
 
 /** کلید رمزنگاری/امضا: از محیط یا از فایل محلی خوانده می‌شود */
@@ -35,12 +35,22 @@ function loadSecret(): string {
   const fromEnv = process.env.AUTH_SECRET;
   if (fromEnv && fromEnv.length >= 16) return fromEnv;
   // محلی: تولید و ذخیره پایدار
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  const secretFile = join(DATA_DIR, 'secret.key');
-  if (existsSync(secretFile)) return readFileSync(secretFile, 'utf8').trim();
-  const secret = randomBytes(32).toString('hex');
-  writeFileSync(secretFile, secret, { mode: 0o600 });
-  return secret;
+  try {
+    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+    const secretFile = join(DATA_DIR, 'secret.key');
+    if (existsSync(secretFile)) return readFileSync(secretFile, 'utf8').trim();
+    const secret = randomBytes(32).toString('hex');
+    writeFileSync(secretFile, secret, { mode: 0o600 });
+    return secret;
+  } catch {
+    // فایل‌سیستم فقط‌خواندنی (مثلاً Vercel بدون AUTH_SECRET):
+    // کلید پایدار از توکن Blob مشتق می‌شود تا بین فراخوانی‌ها ثابت بماند.
+    if (process.env.BLOB_READ_WRITE_TOKEN)
+      return createHmac('sha256', 'soc-noooob-fallback-key')
+        .update(process.env.BLOB_READ_WRITE_TOKEN)
+        .digest('hex');
+    return randomBytes(32).toString('hex');
+  }
 }
 
 export const SECRET = loadSecret();
