@@ -160,12 +160,12 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
           {roots.map((root) => {
             const replies = repliesOf(root.id);
             return (
-              <li key={root.id} className="rounded-xl border border-line bg-bg p-4">
+              <li key={root.id} id={`c-${root.id}`} className="rounded-xl border border-line bg-bg p-4">
                 <ThreadPost c={root} />
                 {replies.length > 0 && (
                   <ul className="mt-3 space-y-3 border-e-2 border-line pe-3 ms-6">
                     {replies.map((r) => (
-                      <li key={r.id}>
+                      <li key={r.id} id={`c-${r.id}`}>
                         <ThreadPost c={r} reply />
                       </li>
                     ))}
