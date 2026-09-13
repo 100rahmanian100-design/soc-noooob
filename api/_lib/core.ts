@@ -84,6 +84,8 @@ export interface Account {
   createdBy: string | null;
   active: boolean;
   createdAt: string;
+  /** ایمیل (اختیاری — در پنل ادمین نمایش داده می‌شود) */
+  email?: string | null;
 }
 
 export interface AccountsFile {
@@ -114,6 +116,27 @@ export interface Comment {
 
 export interface CommentsFile {
   comments: Comment[];
+}
+
+/** اعلان هوشمند (مرکز اعلان‌ها) */
+export interface AppNotification {
+  id: string;
+  /** نام کاربری گیرنده اعلان */
+  user: string;
+  kind: 'user-question' | 'admin-reply';
+  /** فازی که رویداد در آن رخ داده (phase-1..phase-4) */
+  phase: string;
+  /** شناسه کامنت مرتبط (برای deep-link و highlight) */
+  commentId: string;
+  /** نام بازیگر مقابل (کاربر سوال‌کننده / ادمین پاسخ‌دهنده) */
+  actor: string;
+  text: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface NotificationsFile {
+  notifications: AppNotification[];
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +209,7 @@ const blobApi = !!blobToken();
 const blobKeys = {
   accounts: 'accounts.json.enc',
   comments: 'comments.json.enc',
+  notifications: 'notifications.json.enc',
   userData: (u: string) => `user-data/${encodeURIComponent(u)}.json.enc`,
 };
 
@@ -299,6 +323,15 @@ export async function getComments(): Promise<CommentsFile> {
 
 export async function saveComments(file: CommentsFile): Promise<void> {
   await writeJSON(blobKeys.comments, file);
+}
+
+export async function getNotifications(): Promise<NotificationsFile> {
+  const data = await readJSON<NotificationsFile>(blobKeys.notifications);
+  return data ?? { notifications: [] };
+}
+
+export async function saveNotifications(file: NotificationsFile): Promise<void> {
+  await writeJSON(blobKeys.notifications, file);
 }
 
 export function newId(): string {

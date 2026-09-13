@@ -2,25 +2,66 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiLogout, apiMe } from './api';
 import type { PublicAccount } from './types';
 import AuthPage from './pages/AuthPage';
-import GuidePage from './pages/GuidePage';
+import GuidePage, { type GuideView } from './pages/GuidePage';
 import AdminPage from './pages/AdminPage';
+import Sidebar from './components/Sidebar';
+import Topbar from './components/Topbar';
 
-/** مسیریابی ساده مبتنی بر hash — بدون وابستگی بیرونی */
-export type Route = 'guide' | 'admin' | 'auth';
+/** مسیریابی hash — بدون وابستگی بیرونی */
+export type Route = 'auth' | 'admin' | GuideView;
 
-function readHash(): Route {
-  const h = window.location.hash.replace(/^#\/?/, '');
-  if (h === 'admin' || h === 'auth') return h;
-  return 'guide';
+const VALID_VIEWS: Route[] = ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix', 'admin', 'auth'];
+
+/** پارس هش: #/phase-2?c=<commentId> */
+function parseHash(): { route: Route; focusCommentId: string | null } {
+  let raw = window.location.hash.replace(/^#\/?/, '');
+  let focusCommentId: string | null = null;
+  const m = raw.match(/^(.*)\?c=([0-9a-f]+)$/);
+  if (m) {
+    raw = m[1] ?? '';
+    focusCommentId = m[2] ?? null;
+  }
+  const base = raw || 'home';
+  const route: Route = (VALID_VIEWS as string[]).includes(base) ? (base as Route) : 'home';
+  return { route, focusCommentId };
+}
+
+const THEME_KEY = 'erm-theme';
+function readTheme(): 'dark' | 'light' {
+  try {
+    return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
+  } catch {
+    return 'dark';
+  }
 }
 
 export default function App() {
   const [account, setAccount] = useState<PublicAccount | null>(null);
   const [loading, setLoading] = useState(true);
-  const [route, setRoute] = useState<Route>(readHash());
+  const [route, setRoute] = useState<Route>(parseHash().route);
+  const [focus, setFocus] = useState<{ commentId: string; nonce: number } | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>(readTheme);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const onHash = () => setRoute(readHash());
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    const onHash = () => {
+      const p = parseHash();
+      setRoute(p.route);
+      if (p.focusCommentId) {
+        setFocus((f) => ({ commentId: p.focusCommentId!, nonce: (f?.nonce ?? 0) + 1 }));
+      } else {
+        setFocus(null);
+      }
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -34,105 +75,94 @@ export default function App() {
   }, []);
 
   const navigate = useCallback((r: Route) => {
+    if (parseHash().route === r && r !== 'auth') return;
     window.location.hash = `#/${r}`;
     setRoute(r);
+    setFocus(null);
+  }, []);
+
+  /** پرش مستقیم از اعلان به فاز و پیام مشخص */
+  const openComment = useCallback((phase: Route, commentId: string) => {
+    window.location.hash = `#/${phase}?c=${commentId}`;
+    setRoute(phase);
+    setFocus((f) => ({ commentId, nonce: (f?.nonce ?? 0) + 1 }));
   }, []);
 
   const onLogout = useCallback(async () => {
     await apiLogout();
     setAccount(null);
-    navigate('auth');
-  }, [navigate]);
+    window.location.hash = '#/auth';
+    setRoute('auth');
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-muted">
-        در حال بارگذاری…
-      </div>
+      <div className="flex min-h-screen items-center justify-center text-muted">در حال بارگذاری…</div>
     );
   }
 
+  const isAdmin = account?.role === 'admin' || account?.role === 'superadmin';
+
   if (!account || route === 'auth') {
-    return <AuthPage account={account} onAuthed={setAccount} navigate={navigate} />;
+    return (
+      <AuthPage
+        account={account}
+        onAuthed={(a) => {
+          setAccount(a);
+          window.location.hash = '#/home';
+          setRoute('home');
+        }}
+        navigate={navigate}
+      />
+    );
   }
 
-  const isAdmin = account.role === 'admin' || account.role === 'superadmin';
+  const showAdmin = route === 'admin' && isAdmin;
+  const guideView: GuideView = showAdmin ? 'home' : ((route as GuideView) ?? 'home');
 
   return (
     <div className="min-h-screen">
-      {/* هدر */}
-      <header className="sticky top-0 z-40 border-b border-line bg-side/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-          <button
-            onClick={() => navigate('guide')}
-            className="flex items-center gap-2 border-0 bg-transparent p-0"
-            title="راهنمای شروع به کار"
-          >
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand font-extrabold text-white">
-              E
-            </span>
-            <span className="text-start leading-tight">
-              <span className="block text-sm font-bold">SOC Noooob</span>
-              <span className="block text-[11px] text-muted">راهنمای شروع به کار و دوره آزمایشی</span>
-            </span>
-          </button>
+      <Sidebar
+        view={route}
+        account={account}
+        isAdmin={isAdmin}
+        navigate={navigate}
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onLogout={() => void onLogout()}
+      />
 
-          <nav className="flex flex-1 flex-wrap items-center justify-end gap-2">
-            <button
-              onClick={() => navigate('guide')}
-              className={`rounded-lg border border-line px-3 py-2 text-sm transition hover:bg-raised ${
-                route === 'guide' ? 'bg-raised font-bold text-white' : 'text-muted'
-              }`}
-            >
-              راهنمای شروع به کار
-            </button>
-            {isAdmin && (
-              <button
-                onClick={() => navigate('admin')}
-                className={`rounded-lg border border-line px-3 py-2 text-sm transition hover:bg-raised ${
-                  route === 'admin' ? 'bg-raised font-bold text-white' : 'text-muted'
-                }`}
-              >
-                پنل ادمین
-              </button>
+      <div className="lg:ms-[238px]">
+        <Topbar
+          view={route}
+          account={account}
+          theme={theme}
+          onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          onToggleMenu={() => setMenuOpen((o) => !o)}
+          onLogout={() => void onLogout()}
+          onOpenComment={openComment}
+        />
+
+        <main className="mx-auto max-w-4xl px-4 py-8">
+          <div key={route} className="view-enter">
+            {showAdmin ? (
+              <AdminPage account={account} />
+            ) : (
+              <GuidePage
+                account={account}
+                view={guideView}
+                navigate={navigate}
+                focusCommentId={focus?.commentId ?? null}
+                focusNonce={focus?.nonce}
+              />
             )}
-            <span
-              className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
-                account.role === 'superadmin'
-                  ? 'border-brand/60 bg-brand/10 text-brand-soft'
-                  : account.role === 'admin'
-                    ? 'border-warn/50 bg-warn/10 text-warn'
-                    : 'border-line bg-surface text-muted'
-              }`}
-            >
-              {account.role === 'superadmin'
-                ? 'سوپر ادمین'
-                : account.role === 'admin'
-                  ? 'ادمین'
-                  : 'کاربر'}
-              : {account.username}
-            </span>
-            <button
-              onClick={onLogout}
-              className="rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:bg-raised hover:text-ink"
-            >
-              خروج
-            </button>
-          </nav>
-        </div>
-      </header>
+          </div>
+        </main>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        {route === 'admin' && isAdmin ? (
-          <AdminPage account={account} />
-        ) : (
-          <GuidePage account={account} />
-        )}
-      </main>
-
-      <footer className="border-t border-line py-6 text-center text-xs text-muted">
-        SOC Noooob — راهنمای شروع به کار و دوره آزمایشی · شهریور–مهر ۱۴۰۵
-      </footer>
+        <footer className="border-t border-line py-6 text-center text-xs text-muted">
+          آکادمی SOC ارمانیان — راهنمای دوره آزمایشی · شهریور – مهر · Ermanian Edition 02
+        </footer>
+      </div>
     </div>
   );
 }

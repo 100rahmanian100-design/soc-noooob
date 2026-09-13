@@ -2,44 +2,80 @@
 
 @theme {
   --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
-  --color-bg: #0b0d10;
-  --color-side: #101318;
-  --color-surface: #14171c;
-  --color-raised: #1b2027;
-  --color-line: #2a313b;
-  --color-ink: #e8eaee;
-  --color-muted: #98a2ae;
-  --color-brand: #e11d2e;
-  --color-brand-soft: #ff4653;
-  --color-ok: #2fbf71;
-  --color-warn: #e5a50a;
+  --color-bg: oklch(17% 0.008 105);
+  --color-side: oklch(19% 0.008 105);
+  --color-surface: oklch(22% 0.009 105);
+  --color-raised: oklch(26% 0.01 105);
+  --color-line: oklch(32% 0.012 105);
+  --color-ink: oklch(93% 0.008 105);
+  --color-muted: oklch(70% 0.012 105);
+  --color-accent: oklch(85% 0.135 112);
+  --color-onaccent: oklch(23% 0.03 112);
+  --color-brand: oklch(85% 0.135 112);
+  --color-brand-soft: oklch(85% 0.135 112);
+  --color-ok: oklch(72% 0.14 155);
+  --color-warn: oklch(83% 0.12 77);
+  --color-danger: oklch(77% 0.115 28);
+}
+
+/* ————— Ermanian Edition 02 ————— */
+:root {
+  color-scheme: dark;
+  --bg: oklch(17% 0.008 105); /* پس‌زمینه اصلی دودی زیتونی */
+  --side: oklch(19% 0.008 105); /* سایدبار ثابت ۲۳۸ پیکسلی */
+  --surface: oklch(22% 0.009 105); /* پس‌زمینه کارت‌ها و فرم‌ها */
+  --raised: oklch(26% 0.01 105); /* هاور دکمه‌ها و منو */
+  --line: oklch(32% 0.012 105); /* بوردرها و خطوط جداکننده */
+  --text: oklch(93% 0.008 105); /* متن اصلی */
+  --muted: oklch(70% 0.012 105); /* متن‌های فرعی */
+  --accent: oklch(85% 0.135 112); /* نئون لیمویی/زیتونی شاخص */
+  --ink: oklch(23% 0.03 112); /* رنگ متن روی بک‌گراند شاخص */
+  --red: oklch(77% 0.115 28); /* وضعیت خطر / High */
+  --amber: oklch(83% 0.12 77); /* وضعیت هشدار / Medium */
+  --radius: 16px;
+}
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: oklch(97% 0.007 105);
+  --side: oklch(94% 0.01 105);
+  --surface: oklch(99% 0.005 105);
+  --raised: oklch(92% 0.013 105);
+  --line: oklch(84% 0.012 105);
+  --text: oklch(24% 0.015 105);
+  --muted: oklch(46% 0.018 105);
+  --accent: oklch(84% 0.145 112);
+  --red: oklch(47% 0.17 28);
+  --amber: oklch(46% 0.11 77);
 }
 
 html {
   color-scheme: dark;
 }
+html[data-theme='light'] {
+  color-scheme: light;
+}
 
 body {
   margin: 0;
-  background: var(--color-bg);
-  color: var(--color-ink);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans);
   line-height: 1.9;
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--color-brand);
-  color: #fff;
+  background: var(--accent);
+  color: var(--ink);
 }
 
-/* اسکرول‌بار تیره */
+/* اسکرول‌بار */
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--color-line);
+  background: var(--line);
   border-radius: 8px;
 }
 *::-webkit-scrollbar-track {
@@ -48,14 +84,73 @@ body {
 
 /* لینک‌های محتوایی راهنما */
 .guide-link {
-  color: var(--color-brand-soft);
+  color: var(--accent);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 4px;
-  transition: color 0.15s;
+  transition: opacity 0.15s;
 }
 .guide-link:hover {
-  color: #ff6b75;
+  opacity: 0.8;
+}
+
+/* بج بازه زمانی فاز */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.15rem 0.8rem;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ترنزیشن نرم تعویض ویو */
+.view-enter {
+  animation: viewIn 0.28s ease both;
+}
+@keyframes viewIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* هایلایت پیام هدف deep-link اعلان */
+.flash-target {
+  animation: flashRing 2.4s ease;
+  border-color: var(--accent) !important;
+}
+@keyframes flashRing {
+  0%,
+  60% {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* نوار پیشرفت */
+.progress-track {
+  background: var(--raised);
+  border-radius: 999px;
+  overflow: hidden;
+  height: 8px;
+}
+.progress-fill {
+  background: var(--accent);
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
 }
 
 @media print {

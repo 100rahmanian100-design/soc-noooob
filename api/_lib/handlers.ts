@@ -5,6 +5,7 @@
  */
 import {
   type Account,
+  type AppNotification,
   type Comment,
   type Role,
   INVITE_CODE,
@@ -13,12 +14,14 @@ import {
   findAccount,
   getAccounts,
   getComments,
+  getNotifications,
   getUserData,
   hashPassword,
   newId,
   readSession,
   saveAccounts,
   saveComments,
+  saveNotifications,
   saveUserData,
   signSession,
   verifyPassword,
@@ -48,11 +51,121 @@ function str(v: unknown): string {
 export function publicAccount(a: Account) {
   return {
     username: a.username,
+    email: a.email ?? null,
     role: a.role,
     createdBy: a.createdBy,
     active: a.active,
     createdAt: a.createdAt,
   };
+}
+
+/** برچسب فارسی فاز برای متن اعلان‌ها */
+function phaseLabel(phase: string): string {
+  switch (phase) {
+    case 'phase-1':
+      return 'فاز ۱: آموزش SIEM';
+    case 'phase-2':
+      return 'فاز ۲: آموزش شبکه';
+    case 'phase-3':
+      return 'فاز ۳: آموزش Endpoint';
+    case 'phase-4':
+      return 'فاز ۴: Onboarding و OKRها';
+    default:
+      return phase;
+  }
+}
+
+function publicNotification(n: AppNotification) {
+  return { ...n };
+}
+
+/** ساخت اعلان برای یک کاربر (بدون تکرار برای همان کامنت/گیرنده) */
+async function pushNotification(n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>): Promise<void> {
+  const file = await getNotifications();
+  const dup = file.notifications.some(
+    (x) => x.user.toLowerCase() === n.user.toLowerCase() && x.commentId === n.commentId && x.kind === n.kind,
+  );
+  if (dup) return;
+  file.notifications.push({ ...n, id: newId(), createdAt: new Date().toISOString(), read: false });
+  // سقف نگه‌داری: ۵۰۰ اعلان آخر
+  if (file.notifications.length > 500) {
+    file.notifications = file.notifications.slice(file.notifications.length - 500);
+  }
+  await saveNotifications(file);
+}
+
+/** گیرندگان ادمین برای سوال جدید کاربر: ادمین سازنده + همه سوپرادمین‌ها */
+async function adminRecipientsForUser(author: Account): Promise<string[]> {
+  const { accounts } = await getAccounts();
+  const out = new Set<string>();
+  if (author.createdBy) {
+    const maker = accounts.find((a) => a.username.toLowerCase() === author.createdBy!.toLowerCase());
+    if (maker && maker.active) out.add(maker.username);
+  }
+  for (const a of accounts) {
+    if ((a.role === 'admin' || a.role === 'superadmin') && a.active && a.username !== author.username) {
+      // ادمین سازنده حتماً، سوپرادمین‌ها همیشه
+      if (a.role === 'superadmin' || (author.createdBy && a.username.toLowerCase() === author.createdBy.toLowerCase())) {
+        out.add(a.username);
+      }
+    }
+  }
+  return [...out];
+}
+
+/** کلیدهای تسک هر فاز — مبنای محاسبه درصد پیشرفت */
+export const PROGRESS_TASK_KEYS: Record<string, string[]> = {
+  'phase-1': [
+    'p1-sec450',
+    'p1-elastic-course',
+    'p1-elastic-video1',
+    'p1-elastic-basics',
+    'p1-elastic-query',
+    'p1-splunk-fund1',
+    'p1-splunk-fund2-m10',
+    'p1-splunk-es-videos',
+    'p1-splunk-basics-room',
+    'p1-splunk-investigate',
+    'p1-lab-access',
+    'p1-real-project',
+    'p1-review',
+  ],
+  'phase-2': [
+    'p2-sec450-net',
+    'p2-net-video',
+    'p2-wireshark',
+    'p2-nsm',
+    'p2-dns',
+    'p2-web',
+    'p2-foundations',
+    'p2-reports',
+    'p2-review',
+  ],
+  'phase-3': [
+    'p3-win-sysmon',
+    'p3-win-video',
+    'p3-win-mon',
+    'p3-linux',
+    'p3-linux-mon',
+    'p3-hidps-video',
+    'p3-scenarios',
+    'p3-review',
+  ],
+  'phase-4': ['p4-training', 'p4-access', 'p4-shift', 'p4-sec-event', 'p4-fine-tuning', 'p4-ai'],
+};
+
+function progressSummary(progress: Record<string, boolean>) {
+  const perPhase: Record<string, { done: number; total: number; pct: number }> = {};
+  let doneAll = 0;
+  let totalAll = 0;
+  for (const [phase, keys] of Object.entries(PROGRESS_TASK_KEYS)) {
+    const done = keys.filter((k) => progress[k] === true).length;
+    const total = keys.length;
+    perPhase[phase] = { done, total, pct: total === 0 ? 0 : Math.round((done / total) * 100) };
+    doneAll += done;
+    totalAll += total;
+  }
+  return { perPhase, total: { done: doneAll, total: totalAll, pct: totalAll === 0 ? 0 : Math.round((doneAll / totalAll) * 100) } };
 }
 
 async function currentAccount(ctx: ApiCtx): Promise<Account | null> {
@@ -282,7 +395,73 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       };
       file.comments.push(comment);
       await saveComments(file);
+
+      // ---- اعلان هوشمند ----
+      try {
+        if (parentId) {
+          // پاسخ ادمین به کاربر: اعلان برای نویسنده پیام اصلی
+          const parent = file.comments.find((c) => c.id === parentId);
+          if (parent && parent.author.toLowerCase() !== account.username.toLowerCase()) {
+            await pushNotification({
+              user: parent.author,
+              kind: 'admin-reply',
+              phase,
+              commentId: comment.id,
+              actor: account.username,
+              text: `پاسخ جدید از مدیر در ${phaseLabel(phase)}`,
+            });
+          }
+        } else {
+          // سوال/گزارش جدید کاربر: اعلان فوری برای ادمین آنلاین (سازنده + سوپرادمین‌ها)
+          const recipients = await adminRecipientsForUser(account);
+          for (const r of recipients) {
+            await pushNotification({
+              user: r,
+              kind: 'user-question',
+              phase,
+              commentId: comment.id,
+              actor: account.username,
+              text: `پیام جدید از «${account.username}» در ${phaseLabel(phase)}`,
+            });
+          }
+        }
+      } catch (e) {
+        console.error('[notifications] push failed', e);
+      }
+
       return ok({ comment });
+    }
+
+    // ---------------- مرکز اعلان‌ها ----------------
+    case 'notifications:list': {
+      const file = await getNotifications();
+      const mine = file.notifications
+        .filter((n) => n.user.toLowerCase() === account.username.toLowerCase())
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+        .slice(0, 50)
+        .map(publicNotification);
+      const unread = mine.filter((n) => !n.read).length;
+      return ok({ notifications: mine, unread });
+    }
+
+    case 'notifications:markRead': {
+      const ids = Array.isArray(ctx.body.ids)
+        ? (ctx.body.ids as unknown[]).filter((x): x is string => typeof x === 'string')
+        : [];
+      const markAll = ctx.body.all === true;
+      const file = await getNotifications();
+      let changed = 0;
+      for (const n of file.notifications) {
+        if (n.user.toLowerCase() !== account.username.toLowerCase()) continue;
+        if (markAll || ids.includes(n.id)) {
+          if (!n.read) {
+            n.read = true;
+            changed++;
+          }
+        }
+      }
+      if (changed > 0) await saveNotifications(file);
+      return ok({ marked: changed });
     }
 
     // ---------------- مدیریت حساب‌ها (ادمین/سوپر ادمین) ----------------
@@ -302,6 +481,7 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       const username = str(ctx.body.username);
       const password = str(ctx.body.password);
       const newRole = str(ctx.body.role) as Role;
+      const email = str(ctx.body.email) || null;
 
       if (!/^[a-zA-Z0-9_-]{3,32}$/.test(username))
         return err(400, 'نام کاربری باید ۳ تا ۳۲ نویسه لاتین، عدد، خط تیره یا زیرخط باشد.');
@@ -309,6 +489,8 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       if (account.role === 'admin' && newRole !== 'user')
         return err(403, 'ادمین فقط می‌تواند کاربر عادی بسازد.');
       if (!['admin', 'user'].includes(newRole)) return err(400, 'نقش نامعتبر است.');
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        return err(400, 'ایمیل معتبر نیست.');
 
       const file = await getAccounts();
       if (file.accounts.some((a) => a.username.toLowerCase() === username.toLowerCase()))
@@ -321,6 +503,7 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         createdBy: account.username,
         active: true,
         createdAt: new Date().toISOString(),
+        email,
       };
       file.accounts.push(created);
       await saveAccounts(file);
@@ -363,6 +546,76 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       target.passHash = hashPassword(newPassword);
       await saveAccounts(file);
       return ok({ message: `رمز عبور «${username}» بازنشانی شد.` });
+    }
+
+    // ---------------- پایش پیشرفت کاربران (پنل ادمین) ----------------
+    case 'users:progress': {
+      if (account.role === 'user') return err(403, 'دسترسی مجاز نیست.');
+      const file = await getAccounts();
+      let targets = file.accounts;
+      if (account.role === 'admin') {
+        targets = targets.filter(
+          (a) => a.role === 'user' && a.createdBy === account.username,
+        );
+      } else {
+        targets = targets.filter((a) => a.role === 'user');
+      }
+      const rows = [] as Array<{
+        username: string;
+        email: string | null;
+        createdAt: string;
+        active: boolean;
+        summary: ReturnType<typeof progressSummary>;
+      }>;
+      for (const t of targets) {
+        const data = await getUserData(t.username);
+        rows.push({
+          username: t.username,
+          email: t.email ?? null,
+          createdAt: t.createdAt,
+          active: t.active,
+          summary: progressSummary(data.progress ?? {}),
+        });
+      }
+      rows.sort((a, b) => a.username.localeCompare(b.username));
+      return ok({ rows });
+    }
+
+    // ---------------- جزئیات یک کاربر (Inspect) ----------------
+    case 'users:inspect': {
+      if (account.role === 'user') return err(403, 'دسترسی مجاز نیست.');
+      const username = str(ctx.body.username);
+      const file = await getAccounts();
+      const target = file.accounts.find((a) => a.username.toLowerCase() === username.toLowerCase());
+      if (!target) return err(404, 'کاربر پیدا نشد.');
+      if (
+        account.role === 'admin' &&
+        !(target.role === 'user' && target.createdBy === account.username)
+      )
+        return err(403, 'ادمین فقط کاربران ساخته‌ی خودش را مشاهده می‌کند.');
+      const data = await getUserData(target.username);
+      const { comments } = await getComments();
+      let thread: Comment[] = [];
+      if (target.role === 'user') {
+        const roots = comments.filter(
+          (c) => c.author.toLowerCase() === target.username.toLowerCase() && c.parentId === null,
+        );
+        const rootIds = new Set(roots.map((c) => c.id));
+        thread = comments
+          .filter((c) => rootIds.has(c.id) || (c.parentId !== null && rootIds.has(c.parentId)))
+          .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+      } else {
+        thread = comments
+          .filter((c) => c.author.toLowerCase() === target.username.toLowerCase())
+          .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+          .slice(0, 100);
+      }
+      return ok({
+        user: publicAccount(target),
+        progress: data.progress ?? {},
+        summary: progressSummary(data.progress ?? {}),
+        comments: thread,
+      });
     }
 
     default:

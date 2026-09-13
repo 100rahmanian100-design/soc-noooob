@@ -63,11 +63,25 @@ export const apiPostComment = (phase: string, text: string, parentId: string | n
 export const apiListUsers = () =>
   call<{ users: import('./types').PublicAccount[] }>('data', { action: 'users:list' });
 
-export const apiCreateUser = (username: string, password: string, role: 'admin' | 'user') =>
-  call<AccountInfo>('data', { action: 'users:create', username, password, role });
+export const apiCreateUser = (username: string, password: string, role: 'admin' | 'user', email = '') =>
+  call<AccountInfo>('data', { action: 'users:create', username, password, role, email });
 
 export const apiSetUserStatus = (username: string, active: boolean) =>
   call<AccountInfo>('data', { action: 'users:setStatus', username, active });
 
 export const apiResetPassword = (username: string, newPassword: string) =>
   call('data', { action: 'users:resetPassword', username, newPassword });
+
+export const apiUsersProgress = () =>
+  call<{ rows: import('./types').UserProgressRow[] }>('data', { action: 'users:progress' });
+
+export const apiInspectUser = (username: string) =>
+  call<import('./types').UserInspect>('data', { action: 'users:inspect', username });
+
+export const apiListNotifications = () =>
+  call<{ notifications: import('./types').AppNotification[]; unread: number }>('data', {
+    action: 'notifications:list',
+  });
+
+export const apiMarkNotifications = (ids: string[] = [], all = false) =>
+  call<{ marked: number }>('data', { action: 'notifications:markRead', ids, all });
