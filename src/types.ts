@@ -103,10 +103,11 @@ export const TASK_KEYS: Record<string, string[]> = {
     'p3-linux',
     'p3-linux-mon',
     'p3-hidps-video',
+    'p3-reports',
     'p3-scenarios',
     'p3-review',
   ],
-  'phase-4': ['p4-training', 'p4-access', 'p4-shift', 'p4-sec-event', 'p4-fine-tuning', 'p4-ai'],
+  'phase-4': ['p4-training', 'p4-access', 'p4-shift', 'p4-sec-event', 'p4-fine-tuning'],
 };
 
 export const ALL_TASK_KEYS = Object.values(TASK_KEYS).flat();

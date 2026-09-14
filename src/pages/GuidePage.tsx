@@ -157,7 +157,7 @@ const PHASE_META: Array<{
   {
     id: 'phase-1',
     no: 'فاز ۱',
-    title: 'آموزش ابزارهای SIEM',
+    title: 'آموزش SIEM',
     pill: 'بازه زمانی: ۲ هفته',
     emoji: '🧭',
     next: 'phase-2',
@@ -183,14 +183,14 @@ const PHASE_META: Array<{
     pill: 'بازه زمانی: ۱ هفته',
     emoji: '💻',
     next: 'phase-4',
-    nextLabel: 'فاز بعدی: Onboarding و OKRها',
+    nextLabel: 'فاز بعدی: Onboarding',
     prev: 'phase-2',
     prevLabel: '→ فاز قبلی',
   },
   {
     id: 'phase-4',
     no: 'فاز ۴',
-    title: 'Onboarding و OKRها',
+    title: 'Onboarding',
     pill: 'بازه زمانی: ۱ هفته',
     emoji: '🚀',
     next: 'appendix',
@@ -468,22 +468,25 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>تسک‌های عملی فاز ۱</H3>
-      <p className="muted small" style={{ margin: '4px 0 0' }}>
-        دوره‌ها و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل تیک‌زدن
-        هستند.
-      </p>
+      <H3>روند ادامهٔ کار و ارزیابی فاز ۱</H3>
       <ul className="mt-2 space-y-1">
-        <Task k="p1-lab-access" checked={!!progress['p1-lab-access']} onToggle={toggle}>
-          راه‌اندازی و اتصال به ماشین‌های Elastic و Splunk آزمایشگاه MSSP{' '}
-          (<L href="/docs/mssp-lab-access-guide">راهنمای دسترسی</L>)
-        </Task>
-        <Task k="p1-real-project" checked={!!progress['p1-real-project']} onToggle={toggle}>
-          اتصال و تمرین روی پروژه Elastic و Splunk واقعی ارسال‌شده توسط کارشناس لایه ۳
-        </Task>
-        <Task k="p1-review" checked={!!progress['p1-review']} onToggle={toggle}>
-          شرکت در جلسه ارزیابی تئوری و عملی پایان فاز با کارشناس لایه ۳
-        </Task>
+        <BULLET>دسترسی <L href="https://tryhackme.com">TryHackMe</L> از طرف کارشناس لایه سه ارسال خواهد شد.</BULLET>
+        <BULLET>با آغاز این فاز دسترسی به ۴ ماشین SIEM به‌صورت آزمایشی برقرار خواهد شد؛ لطفاً برای تمرین از این ماشین‌ها استفاده کنید.</BULLET>
+        <BULLET>
+          <Task k="p1-lab-access" checked={!!progress['p1-lab-access']} onToggle={toggle} inline>
+            دسترسی به Elastic و Splunk آزمایشگاه MSSP (<L href="/docs/mssp-lab-access-guide">راهنمای دسترسی</L>)
+          </Task>
+        </BULLET>
+        <BULLET>
+          <Task k="p1-real-project" checked={!!progress['p1-real-project']} onToggle={toggle} inline>
+            دسترسی به یک پروژه Elastic و Splunk واقعی (توسط کارشناس لایه سه ارسال خواهد شد)
+          </Task>
+        </BULLET>
+        <BULLET>
+          <Task k="p1-review" checked={!!progress['p1-review']} onToggle={toggle} inline>
+            پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
+          </Task>
+        </BULLET>
       </ul>
 
       <CommentSection
@@ -571,24 +574,22 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>تسک‌های عملی فاز ۲</H3>
-      <p className="muted small" style={{ margin: '4px 0 0' }}>
-        دوره‌ها و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل تیک‌زدن
-        هستند.
-      </p>
+      <H3>روند ادامهٔ کار و ارزیابی فاز ۲</H3>
       <ul className="mt-2 space-y-1">
-        <Task k="p2-reports" checked={!!progress['p2-reports']} onToggle={toggle}>
-          بررسی یوزکیس‌ها روی پروژه‌های واقعی و ارسال گزارش موارد مشکوک به کارشناس لایه ۳
-        </Task>
-        <Task k="p2-review" checked={!!progress['p2-review']} onToggle={toggle}>
-          شرکت در جلسه ارزیابی پایانی فاز ۲
-        </Task>
+        <BULLET>
+          دسترسی <L href="https://tryhackme.com">TryHackMe</L> و <L href="/portal">پرتال آموزشی</L> از طرف کارشناس لایه سه ارسال خواهد شد.
+        </BULLET>
+        <BULLET>
+          <Task k="p2-reports" checked={!!progress['p2-reports']} onToggle={toggle} inline>
+            لطفاً در حین یادگیری، روی پروژه‌های واقعی نیز یوزکیس‌های آموزش‌داده‌شده بررسی شوند و موارد مشکوک مشاهده‌شده در پروژه‌ها در قالب یک گزارش کوتاه برای کارشناس لایه سه ارسال شود. این گزارش‌ها بخشی از مرحله ارزیابی این فاز به حساب می‌آیند.
+          </Task>
+        </BULLET>
+        <BULLET>
+          <Task k="p2-review" checked={!!progress['p2-review']} onToggle={toggle} inline>
+            پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
+          </Task>
+        </BULLET>
       </ul>
-
-      <BULLET>
-        دسترسی <L href="https://tryhackme.com">TryHackMe</L> و{' '}
-        <L href="/portal">پرتال آموزشی</L> از طرف کارشناس لایه سه ارسال خواهد شد.
-      </BULLET>
 
       <CommentSection
         phase="phase-2"
@@ -667,18 +668,24 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>تسک‌های عملی فاز ۳</H3>
-      <p className="muted small" style={{ margin: '4px 0 0' }}>
-        دوره‌ها، مستندات و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل
-        تیک‌زدن هستند.
-      </p>
+      <H3>روند ادامهٔ کار و ارزیابی فاز ۳</H3>
       <ul className="mt-2 space-y-1">
-        <Task k="p3-scenarios" checked={!!progress['p3-scenarios']} onToggle={toggle}>
-          پیاده‌سازی سناریوهای عملی ارسالی توسط کارشناس لایه ۳ در آزمایشگاه و ارسال نتیجه
-        </Task>
-        <Task k="p3-review" checked={!!progress['p3-review']} onToggle={toggle}>
-          شرکت در جلسه ارزیابی پایان فاز ۳
-        </Task>
+        <BULLET>دسترسی <L href="https://tryhackme.com">TryHackMe</L> از طرف کارشناس لایه سه ارسال خواهد شد.</BULLET>
+        <BULLET>
+          <Task k="p3-reports" checked={!!progress['p3-reports']} onToggle={toggle} inline>
+            لطفاً در حین یادگیری، روی پروژه‌های واقعی نیز یوزکیس‌های آموزش‌داده‌شده بررسی شوند و موارد مشکوک مشاهده‌شده در پروژه‌ها در قالب یک گزارش کوتاه برای کارشناس لایه سه ارسال شود. این گزارش‌ها بخشی از مرحله ارزیابی این فاز به حساب می‌آیند.
+          </Task>
+        </BULLET>
+        <BULLET>
+          <Task k="p3-scenarios" checked={!!progress['p3-scenarios']} onToggle={toggle} inline>
+            در این فاز چند سناریوی عملی نیز توسط کارشناس لایه سه ارسال خواهند شد. این سناریوها بایستی در محیط آزمایشگاه پیاده‌سازی شده و نتیجه آن در قالب گزارش به کارشناس لایه سه ارسال گردد. این گزارش بخشی از مرحله ارزیابی این فاز به حساب می‌آید.
+          </Task>
+        </BULLET>
+        <BULLET>
+          <Task k="p3-review" checked={!!progress['p3-review']} onToggle={toggle} inline>
+            پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
+          </Task>
+        </BULLET>
       </ul>
 
       <CommentSection
@@ -692,18 +699,21 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
   );
 }
 
-/* ------------------------------------------------ فاز ۴: Onboarding و OKRها */
+/* ------------------------------------------------ فاز ۴: Onboarding */
 function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: BodyProps) {
   return (
     <section className={WRAP}>
       <H3>شرح فرآیندها و آموزش‌ها</H3>
       <ul className="space-y-1">
         <BULLET>
-          در این فاز روندها و فرآیندهای تکمیلی و سیاست‌های رصد و پایش مختص پروژه‌های رینگ توسط
-          کارشناس لایه دو و مدیر سرویس رینگ مربوطه آموزش داده خواهد شد.
+          <Task k="p4-training" checked={!!progress['p4-training']} onToggle={toggle} inline>
+            در این فاز روندها و فرآیندهای تکمیلی و سیاست‌های رصد و پایش مختص پروژه‌های رینگ توسط کارشناس لایه دو و مدیر سرویس رینگ مربوطه آموزش داده خواهد شد.
+          </Task>
         </BULLET>
         <BULLET>
-          در این فاز دسترسی پروژه‌های رینگ از طرف کارشناس لایه دو و مدیر سرویس ارسال خواهد شد.
+          <Task k="p4-access" checked={!!progress['p4-access']} onToggle={toggle} inline>
+            در این فاز دسترسی پروژه‌های رینگ از طرف کارشناس لایه دو و مدیر سرویس ارسال خواهد شد.
+          </Task>
         </BULLET>
         <BULLET>
           ارزیابی این فاز توسط کارشناس لایه دو و مدیر سرویس رینگ بر پایه{' '}
@@ -711,15 +721,7 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </BULLET>
       </ul>
 
-      <H3>تسک‌ها و OKRهای فاز ۴</H3>
-      <ul className="mt-2 space-y-1">
-        <Task k="p4-training" checked={!!progress['p4-training']} onToggle={toggle}>
-          آموزش روندها و سیاست‌های رصد پروژه‌های رینگ توسط کارشناس لایه ۲ و مدیر سرویس
-        </Task>
-        <Task k="p4-access" checked={!!progress['p4-access']} onToggle={toggle}>
-          دریافت دسترسی پروژه‌های رینگ
-        </Task>
-      </ul>
+      <H3>روند ارزیابی و OKRهای فاز ۴</H3>
       <ol className="mt-2 flex list-decimal flex-col gap-1 ps-5 pe-1 text-sm">
         <li>
           <span className="flex items-start gap-2.5 leading-8">
@@ -751,21 +753,7 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
                 onToggle={toggle}
                 inline
               >
-                <strong>OKR 3:</strong> ثبت حداقل یک تیکت Fine Tuning به ازای هر SIEM (Elastic و
-                Splunk) در جیرا
-              </Task>
-            </span>
-          </span>
-        </li>
-        <li>
-          <span className="flex items-start gap-2.5 leading-8">
-            <span className="mt-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>
-              <Task k="p4-ai" checked={!!progress['p4-ai']} onToggle={toggle} inline>
-                <strong>OKR 4:</strong> بررسی حداقل یک تیکت AI در جیرا و تغییر وضعیت به{' '}
-                <code dir="ltr" className="rounded bg-raised px-1.5 py-0.5 text-xs">
-                  Investigate
-                </code>
+                <strong>OKR 3:</strong> ثبت حداقل یک تیکت Fine Tuning به ازای هر فناوری SIEM (یک تیکت برای Elastic و یک تیکت برای Splunk) در سامانه جیرا
               </Task>
             </span>
           </span>

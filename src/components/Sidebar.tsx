@@ -16,7 +16,7 @@ const NAV_ITEMS: Array<{ id: Route; label: string; adminOnly?: boolean }> = [
   { id: 'phase-1', label: 'فاز ۱: آموزش SIEM' },
   { id: 'phase-2', label: 'فاز ۲: آموزش شبکه' },
   { id: 'phase-3', label: 'فاز ۳: آموزش Endpoint' },
-  { id: 'phase-4', label: 'فاز ۴: Onboarding و OKRها' },
+  { id: 'phase-4', label: 'فاز ۴: Onboarding' },
   { id: 'appendix', label: 'پیوست ۱: مراجع SANS SEC450' },
   { id: 'admin', label: 'پنل مدیریت', adminOnly: true },
 ];

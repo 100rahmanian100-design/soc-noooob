@@ -19,7 +19,7 @@ const VIEW_TITLES: Record<string, string> = {
   'phase-1': 'فاز ۱: آموزش SIEM',
   'phase-2': 'فاز ۲: آموزش شبکه',
   'phase-3': 'فاز ۳: آموزش Endpoint',
-  'phase-4': 'فاز ۴: Onboarding و OKRها',
+  'phase-4': 'فاز ۴: Onboarding',
   appendix: 'پیوست ۱: مراجع SANS SEC450',
   admin: 'پنل مدیریت',
 };

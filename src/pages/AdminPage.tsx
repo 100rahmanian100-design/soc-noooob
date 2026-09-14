@@ -54,6 +54,7 @@ const TASK_LABELS: Record<string, string> = {
   'p3-linux': 'تهدیدات لینوکس و ویدئوی لینوکس',
   'p3-linux-mon': 'ماژول Linux Security Monitoring',
   'p3-hidps-video': 'ویدئوی بررسی هشدارهای HIDPS',
+  'p3-reports': 'گزارش موارد مشکوک از پروژه‌های واقعی',
   'p3-scenarios': 'سناریوهای عملی لایه ۳',
   'p3-review': 'جلسه ارزیابی پایان فاز ۳',
   'p4-training': 'آموزش روندهای رصد پروژه‌های رینگ',
@@ -61,7 +62,6 @@ const TASK_LABELS: Record<string, string> = {
   'p4-shift': 'OKR 1 — رصد یک شیفت اداری',
   'p4-sec-event': 'OKR 2 — تیکت Security Event',
   'p4-fine-tuning': 'OKR 3 — تیکت Fine Tuning',
-  'p4-ai': 'OKR 4 — تیکت AI ← Investigate',
 };
 
 const roleBadge = (role: Role) =>

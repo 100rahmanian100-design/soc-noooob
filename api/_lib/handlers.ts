@@ -69,7 +69,7 @@ function phaseLabel(phase: string): string {
     case 'phase-3':
       return 'فاز ۳: آموزش Endpoint';
     case 'phase-4':
-      return 'فاز ۴: Onboarding و OKRها';
+      return 'فاز ۴: Onboarding';
     default:
       return phase;
   }
@@ -148,10 +148,11 @@ export const PROGRESS_TASK_KEYS: Record<string, string[]> = {
     'p3-linux',
     'p3-linux-mon',
     'p3-hidps-video',
+    'p3-reports',
     'p3-scenarios',
     'p3-review',
   ],
-  'phase-4': ['p4-training', 'p4-access', 'p4-shift', 'p4-sec-event', 'p4-fine-tuning', 'p4-ai'],
+  'phase-4': ['p4-training', 'p4-access', 'p4-shift', 'p4-sec-event', 'p4-fine-tuning'],
 };
 
 function progressSummary(progress: Record<string, boolean>) {
