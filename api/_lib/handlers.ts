@@ -435,13 +435,18 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
     // ---------------- مرکز اعلان‌ها ----------------
     case 'notifications:list': {
       const file = await getNotifications();
-      const mine = file.notifications
+      const allMine = file.notifications
         .filter((n) => n.user.toLowerCase() === account.username.toLowerCase())
-        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-        .slice(0, 50)
-        .map(publicNotification);
-      const unread = mine.filter((n) => !n.read).length;
-      return ok({ notifications: mine, unread });
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+      const unread = allMine.filter((n) => !n.read).length;
+      const unreadByActorPhase: Record<string, number> = {};
+      for (const notification of allMine) {
+        if (notification.read || notification.kind !== 'user-question') continue;
+        const key = `${notification.actor.toLowerCase()}|${notification.phase}`;
+        unreadByActorPhase[key] = (unreadByActorPhase[key] ?? 0) + 1;
+      }
+      const mine = allMine.slice(0, 50).map(publicNotification);
+      return ok({ notifications: mine, unread, unreadByActorPhase });
     }
 
     case 'notifications:markRead': {
@@ -557,12 +562,12 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         targets = targets.filter(
           (a) => a.role === 'user' && a.createdBy === account.username,
         );
-      } else {
-        targets = targets.filter((a) => a.role === 'user');
       }
+      // سوپر ادمین: همه حساب‌ها شامل ادمین‌ها هم نمایش داده می‌شوند
       const rows = [] as Array<{
         username: string;
         email: string | null;
+        role: string;
         createdAt: string;
         active: boolean;
         summary: ReturnType<typeof progressSummary>;
@@ -572,6 +577,7 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         rows.push({
           username: t.username,
           email: t.email ?? null,
+          role: t.role,
           createdAt: t.createdAt,
           active: t.active,
           summary: progressSummary(data.progress ?? {}),
@@ -622,4 +628,3 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       return err(400, 'action نامعتبر است.');
   }
 }
-

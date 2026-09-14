@@ -79,7 +79,11 @@ export const apiInspectUser = (username: string) =>
   call<import('./types').UserInspect>('data', { action: 'users:inspect', username });
 
 export const apiListNotifications = () =>
-  call<{ notifications: import('./types').AppNotification[]; unread: number }>('data', {
+  call<{
+    notifications: import('./types').AppNotification[];
+    unread: number;
+    unreadByActorPhase: Record<string, number>;
+  }>('data', {
     action: 'notifications:list',
   });
 

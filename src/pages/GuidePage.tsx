@@ -33,7 +33,7 @@ const TH = ({ children }: { children: React.ReactNode }) => (
 function TRow({ topic, learn, practice }: { topic: string; learn: React.ReactNode; practice: React.ReactNode }) {
   return (
     <tr className="border-b border-line align-top">
-      <td className="whitespace-nowrap px-3 py-3 font-semibold">{topic}</td>
+      <td className="break-words px-3 py-3 font-semibold">{topic}</td>
       <td className="px-3 py-3">{learn}</td>
       <td className="px-3 py-3">{practice}</td>
     </tr>
@@ -52,7 +52,7 @@ const H3 = ({ children }: { children: React.ReactNode }) => (
 const BULLET = ({ children }: { children: React.ReactNode }) => (
   <li className="flex items-start gap-2.5 leading-8">
     <span className="mt-3.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-    <span>{children}</span>
+    <span className="min-w-0 break-words">{children}</span>
   </li>
 );
 
@@ -62,7 +62,7 @@ const NOTE = ({ children }: { children: React.ReactNode }) => (
   </p>
 );
 
-const TABLE_WRAP = 'overflow-x-auto rounded-xl border border-line';
+const TABLE_WRAP = 'table-wrap guide-table overflow-x-auto rounded-xl border border-line';
 
 function Task({
   k,
@@ -84,14 +84,17 @@ function Task({
         type="checkbox"
         checked={checked}
         onChange={() => onToggle(k)}
-        className="h-4 w-4 shrink-0 cursor-pointer accent-[oklch(85%_0.135_112)]"
+        className="h-4 w-4 shrink-0 cursor-pointer bg-transparent p-0 accent-[oklch(85%_0.135_112)]"
       />
-      <label htmlFor={`task-${k}`} className={`cursor-pointer ${checked ? 'text-muted line-through' : ''}`}>
+      <label
+        htmlFor={`task-${k}`}
+        className={`m-0 inline min-w-0 cursor-pointer break-words leading-7 ${checked ? 'text-muted line-through' : ''}`}
+      >
         {children}
       </label>
     </>
   );
-  if (inline) return <span className="inline-flex items-start gap-2.5 leading-8">{box}</span>;
+  if (inline) return <span className="inline-flex min-w-0 max-w-full items-start gap-2.5 leading-8">{box}</span>;
   return <li className="flex items-start gap-2.5 leading-8">{box}</li>;
 }
 
@@ -108,7 +111,7 @@ function Ck({
   children: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex items-start gap-2 align-top">
+    <span className="min-w-0 max-w-full inline-flex items-start gap-2 align-top">
       <input
         id={`task-${k}`}
         type="checkbox"
@@ -118,7 +121,7 @@ function Ck({
       />
       <label
         htmlFor={`task-${k}`}
-        className={`m-0 inline cursor-pointer leading-7 ${checked ? 'text-muted line-through' : ''}`}
+        className={`m-0 inline min-w-0 cursor-pointer break-words leading-7 ${checked ? 'text-muted line-through' : ''}`}
       >
         {children}
       </label>
@@ -380,7 +383,7 @@ interface BodyProps {
   focusNonce?: number;
 }
 
-const WRAP = 'rounded-2xl border border-line bg-surface p-5';
+const WRAP = 'rounded-2xl border border-line bg-surface p-5 min-w-0';
 
 /* ------------------------------------------------ فاز ۱: آموزش SIEM */
 function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: BodyProps) {
@@ -837,7 +840,7 @@ function AppendixView({ account, navigate }: { account: PublicAccount; navigate:
 
 function Sec450Table() {
   return (
-    <div className={TABLE_WRAP}>
+    <div className={`${TABLE_WRAP} guide-four-column-table`}>
       <table className="w-full text-sm">
         <thead>
           <tr>
@@ -883,4 +886,3 @@ function Sec450Table() {
     </div>
   );
 }
-

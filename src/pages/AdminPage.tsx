@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   apiCreateUser,
   apiInspectUser,
   apiListComments,
+  apiListNotifications,
   apiPostComment,
   apiResetPassword,
   apiSetUserStatus,
@@ -272,11 +273,13 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
                 return (
                   <tr key={r.username} className="border-t border-line align-middle">
                     <td className="px-3 py-3">
-                      <div className="flex flex-col">
+                      <div className="flex flex-col items-start gap-1">
                         <span className="font-bold" dir="ltr">
                           {r.username}
                         </span>
-                        <span className="text-[10px] text-muted">کاربر عادی</span>
+                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${roleBadge(r.role)}`}>
+                          {ROLE_LABEL[r.role] ?? 'کاربر'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-3 py-3 text-xs" dir="ltr">
@@ -521,134 +524,290 @@ function InspectModal({ username, onClose }: { username: string; onClose: () => 
   );
 }
 
-/* ------------------------------------------------ صندوق گفت‌وگوها (ادمین) */
+/* ------------------------------------------------ صندوق پیام‌ها و پاسخ‌ها (کاربر-محور) */
 function CommentInbox({ account }: { account: PublicAccount }) {
-  const [phase, setPhase] = useState<string>('phase-1');
-  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [users, setUsers] = useState<UserProgressRow[]>([]);
+  const [messagesByUser, setMessagesByUser] = useState<Record<string, Record<string, CommentItem[]>>>({});
+  const [unreadByPhase, setUnreadByPhase] = useState<Record<string, number>>({});
+  const [unreadCommentIds, setUnreadCommentIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedPhase, setSelectedPhase] = useState<string | null>(null);
+  const [phaseComments, setPhaseComments] = useState<CommentItem[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const userKey = (username: string) => username.toLowerCase();
+  const phaseUserKey = (username: string, phase: string) => `${userKey(username)}|${phase}`;
+
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const res = await apiListComments(phase);
-      setComments(res.comments ?? []);
+      const [usersRes, notificationsRes, ...phaseResponses] = await Promise.all([
+        apiUsersProgress(),
+        apiListNotifications(),
+        ...ALL_PHASES.map(([id]) => apiListComments(id)),
+      ]);
+
+      setUsers(usersRes.rows ?? []);
+
+      const grouped: Record<string, Record<string, CommentItem[]>> = {};
+      ALL_PHASES.forEach(([phase], index) => {
+        for (const comment of phaseResponses[index]?.comments ?? []) {
+          if (comment.parentId !== null || comment.authorRole !== 'user') continue;
+          const author = userKey(comment.author);
+          (grouped[author] ??= {})[phase] ??= [];
+          grouped[author][phase].push(comment);
+        }
+      });
+      setMessagesByUser(grouped);
+
+      const nextUnread: Record<string, number> = {
+        ...(notificationsRes.unreadByActorPhase ?? {}),
+      };
+      const nextUnreadIds = new Set<string>();
+      for (const notification of notificationsRes.notifications ?? []) {
+        if (notification.kind !== 'user-question' || notification.read) continue;
+        nextUnreadIds.add(notification.commentId);
+      }
+      setUnreadByPhase(nextUnread);
+      setUnreadCommentIds(nextUnreadIds);
+    } catch {
+      setError('خطا در دریافت اطلاعات صندوق پیام‌ها.');
     } finally {
       setLoading(false);
     }
-  }, [phase]);
+  }, []);
 
   useEffect(() => {
     void load();
+    const refresh = () => void load();
+    window.addEventListener('users-changed', refresh);
+    window.addEventListener('notifications-updated', refresh);
+    return () => {
+      window.removeEventListener('users-changed', refresh);
+      window.removeEventListener('notifications-updated', refresh);
+    };
   }, [load]);
 
-  const roots = comments.filter((c) => c.parentId === null);
-  const repliesOf = (id: string) => comments.filter((c) => c.parentId === id);
+  useEffect(() => {
+    setPhaseComments([]);
+    if (!selectedPhase) {
+      return;
+    }
+    let cancelled = false;
+    apiListComments(selectedPhase)
+      .then((res) => {
+        if (!cancelled) setPhaseComments(res.comments ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setError('خطا در دریافت پیام‌های این فاز.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPhase]);
+
+  const inboxUsers = useMemo(
+    () => users.filter((row) => row.role === 'user'),
+    [users],
+  );
+
+  const phaseCount = (username: string, phase: string) =>
+    messagesByUser[userKey(username)]?.[phase]?.length ?? 0;
+  const phaseUnread = (username: string, phase: string) =>
+    unreadByPhase[phaseUserKey(username, phase)] ?? 0;
+  const userTotal = (username: string) =>
+    ALL_PHASES.reduce((sum, [phase]) => sum + phaseCount(username, phase), 0);
+  const userUnread = (username: string) =>
+    ALL_PHASES.reduce((sum, [phase]) => sum + phaseUnread(username, phase), 0);
+
+  const selectedUserPhases = selectedUser
+    ? ALL_PHASES.filter(([phase]) => phaseCount(selectedUser, phase) > 0)
+    : [];
+
+  const selectedRoots = useMemo(() => {
+    if (!selectedUser || !selectedPhase) return [];
+    const username = userKey(selectedUser);
+    return phaseComments.filter(
+      (comment) => comment.parentId === null && comment.author.toLowerCase() === username,
+    );
+  }, [phaseComments, selectedPhase, selectedUser]);
+
+  const repliesOf = (rootId: string) =>
+    phaseComments.filter((comment) => comment.parentId === rootId);
 
   const reply = async (parentId: string) => {
+    if (!selectedPhase) return;
     const draft = (drafts[parentId] ?? '').trim();
     if (!draft) return;
     setBusyId(parentId);
     setError('');
-    const res = await apiPostComment(phase, draft, parentId);
+    const res = await apiPostComment(selectedPhase, draft, parentId);
     setBusyId(null);
     if (res.error) {
       setError(res.error);
       return;
     }
-    setDrafts((d) => ({ ...d, [parentId]: '' }));
+    setDrafts((current) => ({ ...current, [parentId]: '' }));
     await load();
-    // اعلان فوری به کاربر
     window.dispatchEvent(new Event('notifications-updated'));
   };
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section className="comment-inbox rounded-2xl border border-line bg-surface p-5">
       <h2 className="mb-1 flex items-center gap-2 text-base font-bold">
         <span className="inline-block h-5 w-1.5 rounded bg-accent" />
         صندوق پیام‌ها و پاسخ‌ها
       </h2>
-      <div className="mb-4 mt-3">
-        <label className="mb-1 block text-xs font-semibold text-muted">انتخاب فاز</label>
-        <select
-          value={phase}
-          onChange={(e) => setPhase(e.target.value)}
-          className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent"
-        >
-          {ALL_PHASES.map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
-      {error && <p className="mb-3 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
+      <p className="mb-4 text-xs text-muted">
+        کاربر را انتخاب کنید، سپس فاز را ببینید و در نهایت رشتهٔ پیام را باز کنید. تعداد پیام‌ها و پیام‌های جدید در هر مرحله مشخص است.
+      </p>
+      {account.role === 'superadmin' && (
+        <p className="mb-3 text-[11px] text-muted">نمایش پیام‌های همهٔ کاربران برای سوپر ادمین فعال است.</p>
+      )}
+      {error && (
+        <p className="mb-3 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted">در حال بارگذاری…</p>
-      ) : roots.length === 0 ? (
-        <p className="text-sm text-muted">در این فاز پیامی ثبت نشده است.</p>
       ) : (
-        <ul className="space-y-4">
-          {roots.map((root) => (
-            <li key={root.id} className="rounded-xl border border-line bg-bg p-4">
-              <header className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold">{root.author}</span>
-                <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${roleBadge(root.authorRole)}`}>
-                  {ROLE_LABEL[root.authorRole]}
-                </span>
-                {root.answered ? (
-                  <span className="rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[10px] font-semibold text-ok">
-                    ✓ پاسخ داده شد
-                  </span>
-                ) : (
-                  <span className="rounded-md border border-amber/40 bg-amber/10 px-2 py-0.5 text-[10px] font-semibold text-amber">
-                    ⏳ در انتظار پاسخ
-                  </span>
-                )}
-                <span className="ms-auto text-[10px] text-muted">{fmtDate(root.createdAt)}</span>
-              </header>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{root.text}</p>
+        <div className="comment-inbox-layout min-w-0">
+          <div className="min-w-0">
+            <h3 className="inbox-step-title">۱. انتخاب کاربر</h3>
+            {inboxUsers.length === 0 ? (
+              <p className="empty">کاربری با پیام پیدا نشد.</p>
+            ) : (
+              <ul className="space-y-2">
+                {[...inboxUsers]
+                  .sort((a, b) => userUnread(b.username) - userUnread(a.username) || a.username.localeCompare(b.username))
+                  .map((row) => {
+                    const selected = selectedUser === row.username;
+                    const total = userTotal(row.username);
+                    const fresh = userUnread(row.username);
+                    return (
+                      <li key={row.username}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedUser(row.username);
+                            setSelectedPhase(null);
+                          }}
+                          className={`inbox-user-card ${selected ? 'selected' : ''}`}
+                        >
+                          <span className="avatar" style={{ width: 30, height: 30, fontSize: 13 }}>
+                            {row.username.slice(0, 1).toUpperCase()}
+                          </span>
+                          <span className="min-w-0 flex-1 text-start">
+                            <span className="block truncate text-sm font-bold" dir="ltr">{row.username}</span>
+                            <span className="text-[10px] font-semibold text-muted">{ROLE_LABEL[row.role]}</span>
+                          </span>
+                          <span className="inbox-counts">
+                            <span className="pill">{total} پیام</span>
+                            {fresh > 0 && (
+                              <span className="pill fresh-pill"><span className="dot" />{fresh} جدید</span>
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+              </ul>
+            )}
+          </div>
 
-              {repliesOf(root.id).map((r) => (
-                <div key={r.id} className="mt-3 border-e-2 border-line pe-3 ms-6">
-                  <header className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-bold">{r.author}</span>
-                    <span
-                      className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${roleBadge(r.authorRole)}`}
-                    >
-                      {ROLE_LABEL[r.authorRole]}
-                    </span>
-                    <span className="text-[10px] text-muted">↩ پاسخ</span>
-                    <span className="ms-auto text-[10px] text-muted">{fmtDate(r.createdAt)}</span>
-                  </header>
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-7">{r.text}</p>
-                </div>
-              ))}
+          <div className="min-w-0">
+            <h3 className="inbox-step-title">۲. انتخاب فاز</h3>
+            {!selectedUser ? (
+              <p className="empty">ابتدا یک کاربر انتخاب کنید.</p>
+            ) : selectedUserPhases.length === 0 ? (
+              <p className="empty">این کاربر هنوز پیامی ثبت نکرده است.</p>
+            ) : (
+              <ul className="space-y-2">
+                {selectedUserPhases.map(([phase, label]) => {
+                  const selected = selectedPhase === phase;
+                  const total = phaseCount(selectedUser, phase);
+                  const fresh = phaseUnread(selectedUser, phase);
+                  return (
+                    <li key={phase}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPhase(selected ? null : phase)}
+                        className={`inbox-phase-card ${selected ? 'selected' : ''}`}
+                      >
+                        <span className="min-w-0 flex-1 text-start text-sm font-bold">{label}</span>
+                        <span className="inbox-counts">
+                          <span className="pill">{total} پیام</span>
+                          {fresh > 0 && <span className="pill fresh-pill"><span className="dot" />جدید</span>}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
 
-              <div className="mt-3 ms-6">
-                <textarea
-                  dir="auto"
-                  value={drafts[root.id] ?? ''}
-                  onChange={(e) => setDrafts((d) => ({ ...d, [root.id]: e.target.value }))}
-                  rows={2}
-                  maxLength={4000}
-                  placeholder="پاسخ به این پیام…"
-                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent"
-                />
-                <button
-                  onClick={() => void reply(root.id)}
-                  disabled={busyId === root.id || !(drafts[root.id] ?? '').trim()}
-                  className="mt-2 rounded-lg border border-accent bg-accent/10 px-4 py-1.5 text-xs font-bold text-accent transition hover:bg-accent hover:text-ink disabled:opacity-50"
-                >
-                  {busyId === root.id ? 'در حال ارسال…' : 'ارسال پاسخ'}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+          <div className="min-w-0">
+            <h3 className="inbox-step-title">۳. پیام‌ها و پاسخ</h3>
+            {!selectedUser || !selectedPhase ? (
+              <p className="empty">کاربر و فاز را انتخاب کنید تا پیام‌ها نمایش داده شود.</p>
+            ) : selectedRoots.length === 0 ? (
+              <p className="empty">پیامی در این فاز نیست.</p>
+            ) : (
+              <ul className="space-y-3">
+                {selectedRoots.map((root) => (
+                  <li
+                    key={root.id}
+                    className={`inbox-thread ${unreadCommentIds.has(root.id) ? 'unread' : ''}`}
+                  >
+                    <header className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold" dir="ltr">{root.author}</span>
+                      {unreadCommentIds.has(root.id) && <span className="pill fresh-pill"><span className="dot" />جدید</span>}
+                      <span className="ms-auto text-[10px] text-muted">{fmtDate(root.createdAt)}</span>
+                    </header>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6">{root.text}</p>
+
+                    {repliesOf(root.id).map((replyComment) => (
+                      <article key={replyComment.id} className="inbox-reply">
+                        <header className="flex flex-wrap items-center gap-2">
+                          <span className="text-[11px] font-bold" dir="ltr">{replyComment.author}</span>
+                          <span className="pill">{ROLE_LABEL[replyComment.authorRole]}</span>
+                          <span className="ms-auto text-[10px] text-muted">{fmtDate(replyComment.createdAt)}</span>
+                        </header>
+                        <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-6">{replyComment.text}</p>
+                      </article>
+                    ))}
+
+                    <div className="mt-3 border-t border-line pt-3">
+                      <textarea
+                        dir="auto"
+                        value={drafts[root.id] ?? ''}
+                        onChange={(event) => setDrafts((current) => ({ ...current, [root.id]: event.target.value }))}
+                        rows={2}
+                        maxLength={4000}
+                        placeholder="پاسخ به این پیام…"
+                        className="field min-w-0 resize-y text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void reply(root.id)}
+                        disabled={busyId === root.id || !(drafts[root.id] ?? '').trim()}
+                        className="mt-2 rounded-lg border border-accent bg-accent/10 px-4 py-1.5 text-xs font-bold text-accent transition hover:bg-accent hover:text-ink disabled:opacity-50"
+                      >
+                        {busyId === root.id ? 'در حال ارسال…' : 'ارسال پاسخ'}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
     </section>
   );

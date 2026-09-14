@@ -49,6 +49,7 @@ export interface ProgressSummary {
 export interface UserProgressRow {
   username: string;
   email: string | null;
+  role: Role;
   createdAt: string;
   active: boolean;
   summary: ProgressSummary;
