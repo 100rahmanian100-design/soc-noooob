@@ -212,6 +212,7 @@ pre{direction:ltr;text-align:left;overflow:auto;margin:0;padding:24px;color:var(
 .guide-table td:first-child{font-weight:600}
 .guide-table label{display:inline;min-width:0;margin:0;overflow-wrap:break-word;word-break:normal}
 .guide-table a{overflow-wrap:break-word;word-break:normal}
+.content input[type='checkbox']{width:1rem;min-width:1rem;flex:none}
 
 /* صندوق پیام‌های ادمین: سه گام مستقل و خوانا */
 .comment-inbox{overflow:hidden}

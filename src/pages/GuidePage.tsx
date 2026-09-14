@@ -88,7 +88,7 @@ function Task({
       />
       <label
         htmlFor={`task-${k}`}
-        className={`m-0 inline min-w-0 cursor-pointer break-words leading-7 ${checked ? 'text-muted line-through' : ''}`}
+        className={`m-0 inline min-w-0 flex-1 cursor-pointer break-words leading-7 ${checked ? 'text-muted line-through' : ''}`}
       >
         {children}
       </label>
@@ -121,7 +121,7 @@ function Ck({
       />
       <label
         htmlFor={`task-${k}`}
-        className={`m-0 inline min-w-0 cursor-pointer break-words leading-7 ${checked ? 'text-muted line-through' : ''}`}
+        className={`m-0 inline min-w-0 flex-1 cursor-pointer break-words leading-7 ${checked ? 'text-muted line-through' : ''}`}
       >
         {children}
       </label>
