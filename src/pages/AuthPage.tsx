@@ -4,15 +4,13 @@ import { useEffect, useState } from 'react';
 // import { apiRegister, apiStatus, type StatusInfo } from '../api';
 import { apiLogin } from '../api';
 import type { PublicAccount } from '../types';
-import type { Route } from '../App';
 
 interface Props {
   account: PublicAccount | null;
   onAuthed: (a: PublicAccount) => void;
-  navigate: (r: Route) => void;
 }
 
-export default function AuthPage({ account, onAuthed, navigate }: Props) {
+export default function AuthPage({ account, onAuthed }: Props) {
   // ————— ثبت‌نام غیرفعال — فقط ورود —————
   // const [status, setStatus] = useState<StatusInfo | null>(null);
   // const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -56,7 +54,6 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
       }
       if (res.account) {
         onAuthed(res.account);
-        navigate('home');
       }
     } finally {
       setBusy(false);

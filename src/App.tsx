@@ -96,7 +96,6 @@ export default function App() {
           window.location.hash = `#/${nextRoute}`;
           setRoute(nextRoute);
         }}
-        navigate={navigate}
       />
     );
   }
