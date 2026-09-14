@@ -111,7 +111,7 @@ function Ck({
   children: React.ReactNode;
 }) {
   return (
-    <span className="min-w-0 max-w-full inline-flex items-start gap-2 align-top">
+    <span className="flex w-full min-w-0 items-start gap-2 align-top">
       <input
         id={`task-${k}`}
         type="checkbox"
