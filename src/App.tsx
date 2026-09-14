@@ -97,7 +97,9 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-muted">در حال بارگذاری…</div>
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }} className="muted">
+        در حال بارگذاری…
+      </div>
     );
   }
 
@@ -132,7 +134,8 @@ export default function App() {
         onLogout={() => void onLogout()}
       />
 
-      <div className="lg:ms-[238px]">
+      {/* شل — مطابق سیستم مرجع: .shell + .topbar + .content */}
+      <div className="shell">
         <Topbar
           view={route}
           account={account}
@@ -143,8 +146,8 @@ export default function App() {
           onOpenComment={openComment}
         />
 
-        <main className="mx-auto max-w-4xl px-4 py-8">
-          <div key={route} className="view-enter">
+        <main className="content">
+          <div key={route} className="view-enter fade">
             {showAdmin ? (
               <AdminPage account={account} />
             ) : (
@@ -159,7 +162,7 @@ export default function App() {
           </div>
         </main>
 
-        <footer className="border-t border-line py-6 text-center text-xs text-muted">
+        <footer className="footnote" style={{ textAlign: 'center' }}>
           SOC Noooob — راهنمای شروع به کار و دوره آزمایشی · شهریور – مهر ۱۴۰۵
         </footer>
       </div>

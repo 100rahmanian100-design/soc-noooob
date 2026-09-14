@@ -99,109 +99,131 @@ export default function Topbar({ view, account, theme, onToggleTheme, onToggleMe
   const isAdmin = account.role === 'admin' || account.role === 'superadmin';
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur">
-      <div className="flex items-center gap-3 px-4 py-3">
+    <header className="topbar">
+      {/* بردکرامب — مطابق سیستم مرجع */}
+      <div className="breadcrumb">
+        <span style={{ color: 'var(--text)', fontWeight: 600 }}>{VIEW_TITLES[view] ?? 'راهنما'}</span>
+        <span style={{ marginInlineStart: 10 }}>SOC Noooob · Ermanian</span>
+      </div>
+
+      <div className="top-tools">
+        {/* منوی موبایل — فقط در نمایش ≤۸۰۰px دیده می‌شود (کلاس مرجع) */}
         <button
+          className="mobile-menu plain icon"
           onClick={onToggleMenu}
-          className="grid h-9 w-9 place-items-center rounded-lg border border-line text-sm transition hover:bg-raised lg:hidden"
-          aria-label="باز کردن منو"
+          aria-label="باز و بسته کردن منو"
         >
           ☰
         </button>
 
-        <h1 className="truncate text-sm font-extrabold">{VIEW_TITLES[view] ?? 'راهنما'}</h1>
+        {/* کلید تم */}
+        <button
+          className="plain icon"
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'تم روشن' : 'تم تیره'}
+          aria-label="تغییر پوسته"
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
 
-        <div className="ms-auto flex items-center gap-2">
-          {/* کلید تم */}
-          <button
-            onClick={onToggleTheme}
-            className="grid h-9 w-9 place-items-center rounded-lg border border-line text-base transition hover:bg-raised"
-            title={theme === 'dark' ? 'تم روشن' : 'تم تیره'}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
+        {/* زنگوله اعلان‌ها */}
+        <div style={{ position: 'relative' }} ref={boxRef}>
+          <button className="plain icon" onClick={() => void toggle()} aria-label="اعلان‌ها">
+            🔔
+            {unread > 0 && (
+              <span className="pill" style={{ position: 'absolute', top: -6, insetInlineEnd: -6, padding: '0 6px', background: 'var(--red)', color: 'oklch(97% .007 105)', borderColor: 'transparent', fontSize: 11 }}>
+                {unread > 99 ? '۹۹+' : unread.toLocaleString('fa-IR')}
+              </span>
+            )}
           </button>
 
-          {/* زنگوله اعلان‌ها */}
-          <div className="relative" ref={boxRef}>
-            <button
-              onClick={() => void toggle()}
-              className="relative grid h-9 w-9 place-items-center rounded-lg border border-line text-base transition hover:bg-raised"
-              aria-label="اعلان‌ها"
+          {open && (
+            <div
+              style={{
+                position: 'absolute',
+                insetInlineEnd: 0,
+                top: '100%',
+                zIndex: 50,
+                marginTop: 8,
+                maxHeight: '70vh',
+                width: 'min(92vw, 24rem)',
+                overflow: 'hidden',
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                borderRadius: 12,
+                boxShadow: '0 18px 48px oklch(12% .008 105 / .5)',
+              }}
             >
-              🔔
-              {unread > 0 && (
-                <span className="absolute -end-1.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-danger px-1 text-[10px] font-extrabold text-white">
-                  {unread > 99 ? '۹۹+' : unread.toLocaleString('fa-IR')}
+              <div className="row between" style={{ borderBottom: '1px solid var(--line)', padding: '12px 16px' }}>
+                <span className="small" style={{ fontWeight: 700 }}>
+                  مرکز اعلان‌ها
                 </span>
-              )}
-            </button>
-
-            {open && (
-              <div className="absolute end-0 top-full z-50 mt-2 max-h-[70vh] w-[min(92vw,24rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl shadow-black/50">
-                <div className="flex items-center justify-between border-b border-line px-4 py-3">
-                  <span className="text-sm font-extrabold">مرکز اعلان‌ها</span>
-                  <button
-                    onClick={() => void apiMarkNotifications([], true).then(() => load())}
-                    className="text-[11px] font-semibold text-muted transition hover:text-accent"
-                  >
-                    علامت‌گذاری همه
-                  </button>
-                </div>
-                <div className="max-h-[58vh] overflow-y-auto p-2">
-                  {loading ? (
-                    <p className="px-3 py-8 text-center text-xs text-muted">در حال بارگذاری…</p>
-                  ) : notifications.length === 0 ? (
-                    <p className="px-3 py-8 text-center text-xs text-muted">اعلانی وجود ندارد.</p>
-                  ) : (
-                    notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => openNotification(n)}
-                        className={`flex w-full flex-col gap-1 rounded-xl px-3 py-2.5 text-start transition hover:bg-raised ${
-                          n.read ? 'opacity-70' : ''
-                        }`}
-                      >
-                        <span className="flex items-center gap-2 text-xs">
-                          <span>{n.kind === 'user-question' ? '💬' : '✅'}</span>
-                          <span className="font-bold">{n.text}</span>
-                          {!n.read && (
-                            <span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold text-ink">
-                              جدید
-                            </span>
-                          )}
-                        </span>
-                        <span className="flex items-center justify-between text-[10px] text-muted">
-                          <span>از: {n.actor}</span>
-                          <span>{fmtRelative(n.createdAt)}</span>
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-                {(!isAdmin || notifications.length > 0) && (
-                  <div className="border-t border-line px-4 py-2 text-center text-[10px] text-muted">
-                    کلیک روی هر اعلان → پرش مستقیم به همان پیام در همان فاز
-                  </div>
+                <button
+                  onClick={() => void apiMarkNotifications([], true).then(() => load())}
+                  className="plain muted"
+                  style={{ minHeight: 32, padding: '2px 8px', fontSize: 12 }}
+                >
+                  علامت‌گذاری همه
+                </button>
+              </div>
+              <div style={{ maxHeight: '56vh', overflowY: 'auto', padding: 8 }}>
+                {loading ? (
+                  <p className="small muted" style={{ textAlign: 'center', padding: '32px 12px' }}>
+                    در حال بارگذاری…
+                  </p>
+                ) : notifications.length === 0 ? (
+                  <p className="small muted" style={{ textAlign: 'center', padding: '32px 12px' }}>
+                    اعلانی وجود ندارد.
+                  </p>
+                ) : (
+                  notifications.map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => openNotification(n)}
+                      className="plain"
+                      style={{
+                        display: 'flex',
+                        width: '100%',
+                        flexDirection: 'column',
+                        gap: 4,
+                        alignItems: 'flex-start',
+                        textAlign: 'start',
+                        padding: '10px 12px',
+                        marginBottom: 4,
+                        borderRadius: 9,
+                        opacity: n.read ? 0.7 : 1,
+                      }}
+                    >
+                      <span className="row small" style={{ gap: 8, flexWrap: 'wrap' }}>
+                        <span>{n.kind === 'user-question' ? '💬' : '✅'}</span>
+                        <span style={{ fontWeight: 700 }}>{n.text}</span>
+                        {!n.read && (
+                          <span className="pill" style={{ color: 'var(--ink)', background: 'var(--accent)', borderColor: 'transparent' }}>
+                            جدید
+                          </span>
+                        )}
+                      </span>
+                      <span className="small muted" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 11 }}>
+                        <span>از: {n.actor}</span>
+                        <span>{fmtRelative(n.createdAt)}</span>
+                      </span>
+                    </button>
+                  ))
                 )}
               </div>
-            )}
-          </div>
-
-          {/* کاربر و خروج (دسکتاپ) */}
-          <span className="hidden items-center gap-2 md:flex">
-            <span className="text-xs text-muted">
-              <span className="font-bold text-text" dir="ltr">
-                {account.username}
-              </span>
-            </span>
-          </span>
-          <button
-            onClick={() => void onLogout()}
-            className="hidden rounded-lg border border-line px-3 py-2 text-xs font-semibold text-muted transition hover:bg-raised hover:text-text md:block"
-          >
-            خروج
-          </button>
+              {(!isAdmin || notifications.length > 0) && (
+                <div className="small muted" style={{ borderTop: '1px solid var(--line)', padding: '8px 16px', textAlign: 'center', fontSize: 11 }}>
+                  کلیک روی هر اعلان → پرش مستقیم به همان پیام در همان فاز
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* خروج */}
+        <button className="plain muted small" onClick={() => void onLogout()}>
+          خروج
+        </button>
       </div>
     </header>
   );
