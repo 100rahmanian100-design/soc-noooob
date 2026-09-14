@@ -160,7 +160,7 @@ export default function App() {
         </main>
 
         <footer className="border-t border-line py-6 text-center text-xs text-muted">
-          آکادمی SOC ارمانیان — راهنمای دوره آزمایشی · شهریور – مهر · Ermanian Edition 02
+          SOC Noooob — راهنمای شروع به کار و دوره آزمایشی · شهریور – مهر ۱۴۰۵
         </footer>
       </div>
     </div>

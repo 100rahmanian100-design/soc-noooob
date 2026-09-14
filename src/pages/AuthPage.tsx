@@ -48,7 +48,7 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
       }
       if (res.account) {
         onAuthed(res.account);
-        navigate('guide');
+        navigate('home');
       }
     } finally {
       setBusy(false);
@@ -59,7 +59,7 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
     <div className="grid min-h-screen place-items-center bg-[radial-gradient(60rem_40rem_at_50%_-10%,rgba(225,29,46,0.14),transparent)] px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-brand text-2xl font-extrabold text-white shadow-lg shadow-brand/30">
+          <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent text-2xl font-extrabold text-ink shadow-lg shadow-accent/30">
             E
           </span>
           <h1 className="text-2xl font-extrabold">SOC Noooob</h1>
@@ -97,7 +97,7 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
             </p>
           )}
           {error && (
-            <p className="mb-4 rounded-lg border border-brand/50 bg-brand/10 px-3 py-2 text-xs leading-6 text-brand-soft">
+            <p className="mb-4 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs leading-6 text-danger">
               {error}
             </p>
           )}
@@ -111,7 +111,7 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoComplete="username"
-                className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-brand"
+                className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
               />
             </label>
 
@@ -124,7 +124,7 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-brand"
+                className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
               />
             </label>
 
@@ -136,7 +136,7 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-brand"
+                  className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
                 />
                 <span className="mt-1 block text-[11px] text-muted">
                   نخستین ثبت‌نام با کد دعوتی، حساب سوپر ادمین می‌سازد.
@@ -147,7 +147,7 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-lg border-0 bg-brand py-2.5 font-bold text-white transition hover:bg-brand-soft disabled:opacity-50"
+              className="w-full rounded-lg border-0 bg-accent py-2.5 font-bold text-ink transition hover:opacity-90 disabled:opacity-50"
             >
               {busy ? 'لطفاً صبر کنید…' : mode === 'login' ? 'ورود' : 'ثبت‌نام'}
             </button>

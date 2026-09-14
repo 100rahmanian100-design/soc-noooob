@@ -110,7 +110,7 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
   return (
     <section className="mt-8 rounded-2xl border border-line bg-surface p-5">
       <h3 className="flex items-center gap-2 text-base font-bold">
-        <span className="inline-block h-5 w-1.5 rounded bg-brand" />
+        <span className="inline-block h-5 w-1.5 rounded bg-accent" />
         گفت‌وگو و پرسش‌وپاسخ {phaseTitle}
       </h3>
       <p className="mt-1 text-xs text-muted">
@@ -127,14 +127,14 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
             rows={3}
             maxLength={4000}
             placeholder="سؤال یا نظر خود را درباره این فاز بنویسید…"
-            className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-brand"
+            className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent"
           />
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[11px] text-muted">{text.length}/۴۰۰۰</span>
             <button
               type="submit"
               disabled={!text.trim()}
-              className="rounded-lg border-0 bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-soft disabled:opacity-50"
+              className="rounded-lg border-0 bg-accent px-4 py-2 text-sm font-bold text-ink transition hover:opacity-90 disabled:opacity-50"
             >
               ارسال پیام
             </button>
@@ -184,13 +184,13 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
                       rows={2}
                       maxLength={4000}
                       placeholder="پاسخ به این پیام…"
-                      className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
+                      className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent"
                     />
                     <button
                       type="button"
                       onClick={() => postReply(root.id)}
                       disabled={busyId === root.id || !(replyDrafts[root.id] ?? '').trim()}
-                      className="mt-2 rounded-lg border border-brand bg-brand/10 px-4 py-1.5 text-xs font-bold text-brand-soft transition hover:bg-brand hover:text-white disabled:opacity-50"
+                      className="mt-2 rounded-lg border border-accent bg-accent/10 px-4 py-1.5 text-xs font-bold text-accent transition hover:bg-accent hover:text-ink disabled:opacity-50"
                     >
                       {busyId === root.id ? 'در حال ارسال…' : 'پاسخ'}
                     </button>

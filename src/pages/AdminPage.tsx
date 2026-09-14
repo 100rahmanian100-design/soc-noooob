@@ -209,3 +209,447 @@ function CreateUserForm({ account }: { account: PublicAccount }) {
   );
 }
 
+/* ------------------------------------------------ جدول پایش پیشرفت کاربران */
+function UsersProgressTable({ account }: { account: PublicAccount }) {
+  const [rows, setRows] = useState<UserProgressRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [inspectUser, setInspectUser] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await apiUsersProgress();
+      setRows(res.rows ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const refresh = () => void load();
+    window.addEventListener('users-changed', refresh);
+    return () => window.removeEventListener('users-changed', refresh);
+  }, [load]);
+
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-base font-bold">
+        <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+        پایش پیشرفت کاربران
+      </h2>
+      <p className="mb-4 text-xs text-muted">
+        درصد پیشرفت هر کاربر در فازهای ۱ تا ۴ به‌صورت زنده از چک‌لیست‌های ثبت‌شده محاسبه می‌شود.
+      </p>
+
+      {inspectUser && (
+        <InspectModal username={inspectUser} onClose={() => setInspectUser(null)} />
+      )}
+
+      {loading ? (
+        <p className="text-sm text-muted">در حال بارگذاری…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted">هنوز کاربری برای پایش وجود ندارد.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-line">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-raised">
+                <th className="px-3 py-2.5 text-start text-xs font-bold text-muted">کاربر</th>
+                <th className="px-3 py-2.5 text-start text-xs font-bold text-muted">ایمیل</th>
+                <th className="px-3 py-2.5 text-start text-xs font-bold text-muted">تاریخ عضویت</th>
+                {PHASE_FA.map((p) => (
+                  <th key={p} className="px-3 py-2.5 text-center text-xs font-bold text-muted">
+                    {p}
+                  </th>
+                ))}
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-muted">کل دوره</th>
+                <th className="px-3 py-2.5 text-start text-xs font-bold text-muted">عملیات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const per = ALL_PHASES.map(([id]) => r.summary.perPhase[id]?.pct ?? 0);
+                return (
+                  <tr key={r.username} className="border-t border-line align-middle">
+                    <td className="px-3 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-bold" dir="ltr">
+                          {r.username}
+                        </span>
+                        <span className="text-[10px] text-muted">کاربر عادی</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-xs" dir="ltr">
+                      {r.email || <span className="text-muted">—</span>}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-muted">{fmtDate(r.createdAt)}</td>
+                    {per.map((p, i) => (
+                      <td key={i} className="px-3 py-3 text-center">
+                        <MiniBar pct={p} small />
+                      </td>
+                    ))}
+                    <td className="px-3 py-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className={`text-sm font-extrabold ${r.summary.total.pct === 100 ? 'text-ok' : 'text-accent'}`}
+                        >
+                          {r.summary.total.pct}٪
+                        </span>
+                        <span className="text-[10px] text-muted">
+                          {r.summary.total.done}/{r.summary.total.total}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <UserActions account={account} row={r} onInspect={() => setInspectUser(r.username)} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* عملیات هر کاربر: مشاهده وضعیت + مدیریت */
+function UserActions({ account, row, onInspect }: { account: PublicAccount; row: UserProgressRow; onInspect: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+
+  const setStatus = async (active: boolean) => {
+    setBusy(true);
+    setNote('');
+    const res = await apiSetUserStatus(row.username, active);
+    if (res.error) setNote(res.error);
+    else {
+      setNote(res.message ?? '');
+      window.dispatchEvent(new Event('users-changed'));
+    }
+    setBusy(false);
+  };
+
+  const resetPass = async () => {
+    const next = window.prompt(`رمز جدید برای «${row.username}» (حداقل ۸ نویسه):`);
+    if (!next) return;
+    setNote('');
+    const res = await apiResetPassword(row.username, next);
+    setNote(String(res.error ?? res.message ?? ''));
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button
+        onClick={onInspect}
+        className="rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] font-bold text-accent transition hover:bg-accent hover:text-ink"
+      >
+        مشاهده وضعیت کاربر
+      </button>
+      {account.role !== 'user' && (
+        <>
+          <button
+            disabled={busy}
+            onClick={() => void setStatus(!row.active)}
+            className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:bg-raised"
+          >
+            {row.active ? 'غیرفعال' : 'فعال'}
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => void resetPass()}
+            className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:bg-raised"
+          >
+            تغییر رمز
+          </button>
+        </>
+      )}
+      {note && <span className="block w-full text-[10px] text-muted">{note}</span>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------ مودال مشاهده وضعیت کاربر (Inspect) */
+function InspectModal({ username, onClose }: { username: string; onClose: () => void }) {
+  const [data, setData] = useState<UserInspect | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    apiInspectUser(username)
+      .then((res) => {
+        if (res.error) setError(res.error);
+        else setData(res);
+      })
+      .catch(() => setError('خطا در دریافت اطلاعات کاربر.'));
+  }, [username]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-10"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl rounded-2xl border border-line bg-surface p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="flex items-center gap-2 text-base font-extrabold">
+            <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+            وضعیت کاربر <code dir="ltr">{username}</code>
+          </h3>
+          <button
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-line text-sm transition hover:bg-raised"
+          >
+            ✕
+          </button>
+        </div>
+
+        {error && <p className="mt-4 text-sm text-danger">{error}</p>}
+        {!error && !data && <p className="mt-6 text-sm text-muted">در حال بارگذاری…</p>}
+
+        {data && (
+          <div className="mt-4 space-y-5">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-md border border-line bg-raised px-2 py-1 text-muted">
+                عضو: {fmtDate(data.user.createdAt)}
+              </span>
+              <span className="rounded-md border border-line bg-raised px-2 py-1 text-muted">
+                نقش: {ROLE_LABEL[data.user.role]}
+              </span>
+              {data.user.email && (
+                <span className="rounded-md border border-line bg-raised px-2 py-1 text-muted" dir="ltr">
+                  {data.user.email}
+                </span>
+              )}
+            </div>
+
+            {/* پیشرفت کل */}
+            <div className="rounded-xl border border-line bg-bg p-4">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold">پیشرفت کل</span>
+                <span className="text-sm font-extrabold text-accent">{data.summary.total.pct}٪</span>
+              </div>
+              <div className="progress-track mt-2">
+                <div className="progress-fill" style={{ width: `${data.summary.total.pct}%` }} />
+              </div>
+            </div>
+
+            {/* تفکیک فازها */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {ALL_PHASES.map(([id, label], i) => {
+                const s = data.summary.perPhase[id] ?? { done: 0, total: 0, pct: 0 };
+                return (
+                  <div key={id} className="rounded-xl border border-line bg-bg p-3">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold">{PHASE_FA[i]} · {label.replace('فاز ', '')}</span>
+                      <span className="font-bold text-accent">{s.pct}٪</span>
+                    </div>
+                    <div className="progress-track mt-2 h-2">
+                      <div className="progress-fill" style={{ width: `${s.pct}%` }} />
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted">
+                      {s.done}/{s.total} تسک تیک خورده
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* چک‌باکس‌های تیک‌خورده */}
+            <div>
+              <h4 className="mb-2 text-xs font-bold text-muted">وضعیت تسک‌ها و چک‌باکس‌ها</h4>
+              <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-line bg-bg p-3">
+                {ALL_PHASES.flatMap(([id]) => (TASK_KEYS[id] ?? []).map((k) => ({ id, k }))).map(({ id, k }) => {
+                  const done = data.progress[k] === true;
+                  return (
+                    <div key={k} className="flex items-center gap-2 text-xs leading-6">
+                      <span
+                        className={`grid h-4 w-4 shrink-0 place-items-center rounded border text-[9px] ${
+                          done ? 'border-accent bg-accent text-ink' : 'border-line bg-raised text-muted'
+                        }`}
+                      >
+                        {done ? '✓' : ''}
+                      </span>
+                      <span className={done ? 'text-text' : 'text-muted'}>
+                        <span className="ms-1 rounded bg-raised px-1 py-0.5 text-[9px] font-bold text-muted">
+                          {PHASE_FA[ALL_PHASES.findIndex(([p]) => p === id)]!}
+                        </span>
+                        {TASK_LABELS[k] ?? k}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* پیام‌ها و گزارش‌ها */}
+            <div>
+              <h4 className="mb-2 text-xs font-bold text-muted">پیام‌ها و گزارش‌های ارسالی کاربر</h4>
+              {data.comments.length === 0 ? (
+                <p className="rounded-xl border border-line bg-bg px-3 py-3 text-xs text-muted">
+                  هنوز هیچ پیام یا گزارشی ثبت نشده است.
+                </p>
+              ) : (
+                <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-line bg-bg p-3">
+                  {data.comments.map((c) => (
+                    <div key={c.id} className="rounded-lg border border-line bg-surface p-3">
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted">
+                        <span className="font-bold text-text" dir="ltr">
+                          {c.author}
+                        </span>
+                        <span className="rounded bg-raised px-1.5 py-0.5 font-bold">
+                          {ALL_PHASES.find(([p]) => p === c.phase)?.[1] ?? c.phase}
+                        </span>
+                        <span>{c.parentId ? '↩ پاسخ' : c.answered ? '✓ پاسخ داده شد' : c.authorRole === 'user' ? 'در انتظار پاسخ' : 'پیام ادمین'}</span>
+                        <span className="ms-auto">{fmtDate(c.createdAt)}</span>
+                      </div>
+                      <p className="mt-1 whitespace-pre-wrap text-xs leading-6 text-muted">{c.text}</p>
+                    </div>
+                  ))}
+                  <div className="pt-1 text-center text-[10px] text-muted">
+                        نمایش {data.comments.length} پیام از فازهای مختلف
+                      </div>
+                </div>
+              )}
+            </div>
+          </div>
+          )}
+        </div>
+      </div>
+  );
+}
+
+/* ------------------------------------------------ صندوق گفت‌وگوها (ادمین) */
+function CommentInbox({ account }: { account: PublicAccount }) {
+  const [phase, setPhase] = useState<string>('phase-1');
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiListComments(phase);
+      setComments(res.comments ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const roots = comments.filter((c) => c.parentId === null);
+  const repliesOf = (id: string) => comments.filter((c) => c.parentId === id);
+
+  const reply = async (parentId: string) => {
+    const draft = (drafts[parentId] ?? '').trim();
+    if (!draft) return;
+    setBusyId(parentId);
+    setError('');
+    const res = await apiPostComment(phase, draft, parentId);
+    setBusyId(null);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    setDrafts((d) => ({ ...d, [parentId]: '' }));
+    await load();
+    // اعلان فوری به کاربر
+    window.dispatchEvent(new Event('notifications-updated'));
+  };
+
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-base font-bold">
+        <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+        صندوق پیام‌ها و پاسخ‌ها
+      </h2>
+      <div className="mb-4 mt-3">
+        <label className="mb-1 block text-xs font-semibold text-muted">انتخاب فاز</label>
+        <select
+          value={phase}
+          onChange={(e) => setPhase(e.target.value)}
+          className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent"
+        >
+          {ALL_PHASES.map(([id, label]) => (
+            <option key={id} value={id}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {error && <p className="mb-3 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
+
+      {loading ? (
+        <p className="text-sm text-muted">در حال بارگذاری…</p>
+      ) : roots.length === 0 ? (
+        <p className="text-sm text-muted">در این فاز پیامی ثبت نشده است.</p>
+      ) : (
+        <ul className="space-y-4">
+          {roots.map((root) => (
+            <li key={root.id} className="rounded-xl border border-line bg-bg p-4">
+              <header className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold">{root.author}</span>
+                <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${roleBadge(root.authorRole)}`}>
+                  {ROLE_LABEL[root.authorRole]}
+                </span>
+                {root.answered ? (
+                  <span className="rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[10px] font-semibold text-ok">
+                    ✓ پاسخ داده شد
+                  </span>
+                ) : (
+                  <span className="rounded-md border border-amber/40 bg-amber/10 px-2 py-0.5 text-[10px] font-semibold text-amber">
+                    ⏳ در انتظار پاسخ
+                  </span>
+                )}
+                <span className="ms-auto text-[10px] text-muted">{fmtDate(root.createdAt)}</span>
+              </header>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{root.text}</p>
+
+              {repliesOf(root.id).map((r) => (
+                <div key={r.id} className="mt-3 border-e-2 border-line pe-3 ms-6">
+                  <header className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold">{r.author}</span>
+                    <span
+                      className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${roleBadge(r.authorRole)}`}
+                    >
+                      {ROLE_LABEL[r.authorRole]}
+                    </span>
+                    <span className="text-[10px] text-muted">↩ پاسخ</span>
+                    <span className="ms-auto text-[10px] text-muted">{fmtDate(r.createdAt)}</span>
+                  </header>
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-7">{r.text}</p>
+                </div>
+              ))}
+
+              <div className="mt-3 ms-6">
+                <textarea
+                  dir="auto"
+                  value={drafts[root.id] ?? ''}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [root.id]: e.target.value }))}
+                  rows={2}
+                  maxLength={4000}
+                  placeholder="پاسخ به این پیام…"
+                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent"
+                />
+                <button
+                  onClick={() => void reply(root.id)}
+                  disabled={busyId === root.id || !(drafts[root.id] ?? '').trim()}
+                  className="mt-2 rounded-lg border border-accent bg-accent/10 px-4 py-1.5 text-xs font-bold text-accent transition hover:bg-accent hover:text-ink disabled:opacity-50"
+                >
+                  {busyId === root.id ? 'در حال ارسال…' : 'ارسال پاسخ'}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

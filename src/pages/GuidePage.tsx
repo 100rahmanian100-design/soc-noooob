@@ -413,49 +413,49 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
 
       <H3>چک‌لیست تعاملی تسک‌های فاز ۱ (۲ هفته)</H3>
       <ul className="mt-2 space-y-1">
-        <Task k="p1-sec450" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-sec450']} onToggle={toggle}>
+        <Task k="p1-sec450" checked={!!progress['p1-sec450']} onToggle={toggle}>
           مطالعه مبانی تیم آبی و SOC بر اساس سرفصل SANS SEC450 (در پیوست ۱)
         </Task>
-        <Task k="p1-elastic-course" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-elastic-course']} onToggle={toggle}>
+        <Task k="p1-elastic-course" checked={!!progress['p1-elastic-course']} onToggle={toggle}>
           گذراندن دوره آموزشی رایگان سایت <L href="https://www.elastic.co/training/free">Elastic</L>
         </Task>
-        <Task k="p1-elastic-video1" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-elastic-video1']} onToggle={toggle}>
+        <Task k="p1-elastic-video1" checked={!!progress['p1-elastic-video1']} onToggle={toggle}>
           تماشای ویدئوی شماره یک ماژول Elastic از ویدئوهای Log Semantics
         </Task>
-        <Task k="p1-elastic-basics" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-elastic-basics']} onToggle={toggle}>
+        <Task k="p1-elastic-basics" checked={!!progress['p1-elastic-basics']} onToggle={toggle}>
           تکمیل تمرین{' '}
           <L href="https://tryhackme.com/room/elasticstackthebasics">Elastic Stack: The Basics</L>
         </Task>
-        <Task k="p1-elastic-query" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-elastic-query']} onToggle={toggle}>
+        <Task k="p1-elastic-query" checked={!!progress['p1-elastic-query']} onToggle={toggle}>
           تکمیل تمرین{' '}
           <L href="https://tryhackme.com/room/elasticquerylanguages">Elastic: Query Languages</L>
         </Task>
-        <Task k="p1-splunk-fund1" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-splunk-fund1']} onToggle={toggle}>
+        <Task k="p1-splunk-fund1" checked={!!progress['p1-splunk-fund1']} onToggle={toggle}>
           گذراندن دوره{' '}
           <L href="https://www.splunk.com/en_us/training/free-courses/splunk-fundamentals-1.html">Splunk Fundamentals 1</L>
         </Task>
-        <Task k="p1-splunk-fund2-m10" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-splunk-fund2-m10']} onToggle={toggle}>
+        <Task k="p1-splunk-fund2-m10" checked={!!progress['p1-splunk-fund2-m10']} onToggle={toggle}>
           مطالعه ماژول ۱۰ دوره Splunk Fundamentals 2
         </Task>
-        <Task k="p1-splunk-es-videos" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-splunk-es-videos']} onToggle={toggle}>
+        <Task k="p1-splunk-es-videos" checked={!!progress['p1-splunk-es-videos']} onToggle={toggle}>
           تماشای ویدئوهای شماره ۱ و ۲ آموزش Splunk ES
         </Task>
-        <Task k="p1-splunk-basics-room" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-splunk-basics-room']} onToggle={toggle}>
+        <Task k="p1-splunk-basics-room" checked={!!progress['p1-splunk-basics-room']} onToggle={toggle}>
           تکمیل تمرین{' '}
           <L href="https://tryhackme.com/room/splunk100">Splunk Basics - Did you SIEM?</L>
         </Task>
-        <Task k="p1-splunk-investigate" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-splunk-investigate']} onToggle={toggle}>
+        <Task k="p1-splunk-investigate" checked={!!progress['p1-splunk-investigate']} onToggle={toggle}>
           تکمیل تمرین{' '}
           <L href="https://tryhackme.com/room/investigatingwithsplunk">Investigating with Splunk</L>
         </Task>
-        <Task k="p1-lab-access" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-lab-access']} onToggle={toggle}>
+        <Task k="p1-lab-access" checked={!!progress['p1-lab-access']} onToggle={toggle}>
           راه‌اندازی و اتصال به ماشین‌های Elastic و Splunk آزمایشگاه MSSP{' '}
           (<L href="/docs/mssp-lab-access-guide">راهنمای دسترسی</L>)
         </Task>
-        <Task k="p1-real-project" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-real-project']} onToggle={toggle}>
+        <Task k="p1-real-project" checked={!!progress['p1-real-project']} onToggle={toggle}>
           اتصال و تمرین روی پروژه Elastic و Splunk واقعی ارسال‌شده توسط کارشناس لایه ۳
         </Task>
-        <Task k="p1-review" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p1-review']} onToggle={toggle}>
+        <Task k="p1-review" checked={!!progress['p1-review']} onToggle={toggle}>
           شرکت در جلسه ارزیابی تئوری و عملی پایان فاز با کارشناس لایه ۳
         </Task>
       </ul>
@@ -533,33 +533,33 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
 
       <H3>چک‌لیست تعاملی تسک‌های فاز ۲ (۲ هفته)</H3>
       <ul className="mt-2 space-y-1">
-        <Task k="p2-sec450-net" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-sec450-net']} onToggle={toggle}>
+        <Task k="p2-sec450-net" checked={!!progress['p2-sec450-net']} onToggle={toggle}>
           مطالعه سرفصل تهدیدات شبکه از SANS SEC450
         </Task>
-        <Task k="p2-net-video" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-net-video']} onToggle={toggle}>
+        <Task k="p2-net-video" checked={!!progress['p2-net-video']} onToggle={toggle}>
           تماشای ویدئوی تشخیص تهدیدات شبکه در Log Semantics
         </Task>
-        <Task k="p2-wireshark" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-wireshark']} onToggle={toggle}>
+        <Task k="p2-wireshark" checked={!!progress['p2-wireshark']} onToggle={toggle}>
           تکمیل روم{' '}
           <L href="https://tryhackme.com/room/wiresharktrafficanalysis">Wireshark: Traffic Analysis</L>
         </Task>
-        <Task k="p2-nsm" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-nsm']} onToggle={toggle}>
+        <Task k="p2-nsm" checked={!!progress['p2-nsm']} onToggle={toggle}>
           تکمیل ماژول{' '}
           <L href="https://tryhackme.com/module/network-security-monitoring">Network Security Monitoring (except Snort)</L>
         </Task>
-        <Task k="p2-dns" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-dns']} onToggle={toggle}>
+        <Task k="p2-dns" checked={!!progress['p2-dns']} onToggle={toggle}>
           مطالعه تهدیدات DNS و تماشای ویدئوی DNS در Log Semantics
         </Task>
-        <Task k="p2-web" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-web']} onToggle={toggle}>
+        <Task k="p2-web" checked={!!progress['p2-web']} onToggle={toggle}>
           مطالعه تهدیدات Web و تماشای ویدئوی Web در Log Semantics
         </Task>
-        <Task k="p2-foundations" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-foundations']} onToggle={toggle}>
+        <Task k="p2-foundations" checked={!!progress['p2-foundations']} onToggle={toggle}>
           تکمیل مسیر <L href="/portal/soc-t1-d-foundations">Soc T1 D – Foundations</L> در پرتال آموزشی
         </Task>
-        <Task k="p2-reports" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-reports']} onToggle={toggle}>
+        <Task k="p2-reports" checked={!!progress['p2-reports']} onToggle={toggle}>
           بررسی یوزکیس‌ها روی پروژه‌های واقعی و ارسال گزارش موارد مشکوک به کارشناس لایه ۳
         </Task>
-        <Task k="p2-review" checked={cd /home/erfan/Downloads/ermanian-soc-academy && tail -n 5 src/pages/GuidePage.tsx; echo '---'; grep -c 'p1-sec450' src/pages/GuidePage.tsxprogress['p2-review']} onToggle={toggle}>
+        <Task k="p2-review" checked={!!progress['p2-review']} onToggle={toggle}>
           شرکت در جلسه ارزیابی پایانی فاز ۲
         </Task>
       </ul>
@@ -636,30 +636,30 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
 
       <H3>چک‌لیست تعاملی تسک‌های فاز ۳ (۱ هفته)</H3>
       <ul className="mt-2 space-y-1">
-        <Task k="p3-win-sysmon" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p3-win-sysmon']} onToggle={toggle}>
+        <Task k="p3-win-sysmon" checked={!!progress['p3-win-sysmon']} onToggle={toggle}>
           مطالعه تهدیدات ویندوز و مستند <L href="/tools/sysmon-guide">Sysmon</L>
         </Task>
-        <Task k="p3-win-video" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p3-win-video']} onToggle={toggle}>
+        <Task k="p3-win-video" checked={!!progress['p3-win-video']} onToggle={toggle}>
           تماشای ویدئوی ویندوز در Log Semantics
         </Task>
-        <Task k="p3-win-mon" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p3-win-mon']} onToggle={toggle}>
+        <Task k="p3-win-mon" checked={!!progress['p3-win-mon']} onToggle={toggle}>
           تکمیل ماژول{' '}
           <L href="https://tryhackme.com/module/windows-security-monitoring">Windows Security Monitoring</L>
         </Task>
-        <Task k="p3-linux" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p3-linux']} onToggle={toggle}>
+        <Task k="p3-linux" checked={!!progress['p3-linux']} onToggle={toggle}>
           مطالعه تهدیدات لینوکس و تماشای ویدئوی لینوکس در Log Semantics
         </Task>
-        <Task k="p3-linux-mon" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p3-linux-mon']} onToggle={toggle}>
+        <Task k="p3-linux-mon" checked={!!progress['p3-linux-mon']} onToggle={toggle}>
           تکمیل ماژول{' '}
           <L href="https://tryhackme.com/module/linux-security-monitoring">Linux Security Monitoring</L>
         </Task>
-        <Task k="p3-hidps-video" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p3-hidps-video']} onToggle={toggle}>
+        <Task k="p3-hidps-video" checked={!!progress['p3-hidps-video']} onToggle={toggle}>
           تماشای ویدئوی بررسی هشدارهای HIDPS در Log Semantics
         </Task>
-        <Task k="p3-scenarios" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p3-scenarios']} onToggle={toggle}>
+        <Task k="p3-scenarios" checked={!!progress['p3-scenarios']} onToggle={toggle}>
           پیاده‌سازی سناریوهای عملی ارسالی توسط کارشناس لایه ۳ در آزمایشگاه و ارسال نتیجه
         </Task>
-        <Task k="p3-review" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p3-review']} onToggle={toggle}>
+        <Task k="p3-review" checked={!!progress['p3-review']} onToggle={toggle}>
           شرکت در جلسه ارزیابی پایان فاز ۳
         </Task>
       </ul>
@@ -696,10 +696,10 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
 
       <H3>چک‌لیست تعاملی تسک‌ها و OKRهای فاز ۴ (۱ هفته)</H3>
       <ul className="mt-2 space-y-1">
-        <Task k="p4-training" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p4-training']} onToggle={toggle}>
+        <Task k="p4-training" checked={!!progress['p4-training']} onToggle={toggle}>
           آموزش روندها و سیاست‌های رصد پروژه‌های رینگ توسط کارشناس لایه ۲ و مدیر سرویس
         </Task>
-        <Task k="p4-access" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p4-access']} onToggle={toggle}>
+        <Task k="p4-access" checked={!!progress['p4-access']} onToggle={toggle}>
           دریافت دسترسی پروژه‌های رینگ
         </Task>
       </ul>
@@ -708,7 +708,7 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
           <span className="flex items-start gap-2.5 leading-8">
             <span className="mt-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
             <span>
-              <Task k="p4-shift" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p4-shift']} onToggle={toggle} inline>
+              <Task k="p4-shift" checked={!!progress['p4-shift']} onToggle={toggle} inline>
                 <strong>OKR 1:</strong> رصد و پایش هر پروژه حداقل به اندازه یک شیفت اداری
               </Task>
             </span>
@@ -718,7 +718,7 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
           <span className="flex items-start gap-2.5 leading-8">
             <span className="mt-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
             <span>
-              <Task k="p4-sec-event" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p4-sec-event']} onToggle={toggle} inline>
+              <Task k="p4-sec-event" checked={!!progress['p4-sec-event']} onToggle={toggle} inline>
                 <strong>OKR 2:</strong> ثبت یک تیکت Security Event به ازای هر پروژه در سامانه جیرا
               </Task>
             </span>
@@ -744,7 +744,7 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
           <span className="flex items-start gap-2.5 leading-8">
             <span className="mt-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
             <span>
-              <Task k="p4-ai" checked={echo ok; wc -l src/pages/GuidePage.tsxprogress['p4-ai']} onToggle={toggle} inline>
+              <Task k="p4-ai" checked={!!progress['p4-ai']} onToggle={toggle} inline>
                 <strong>OKR 4:</strong> بررسی حداقل یک تیکت AI در جیرا و تغییر وضعیت به{' '}
                 <code dir="ltr" className="rounded bg-raised px-1.5 py-0.5 text-xs">
                   Investigate

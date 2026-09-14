@@ -38,8 +38,8 @@ export default function Sidebar({ view, account, isAdmin, navigate, open, onClos
             E
           </span>
           <div className="leading-tight">
-            <span className="block text-sm font-extrabold">آکادمی SOC ارمانیان</span>
-            <span className="block text-[11px] text-muted">راهنمای دوره آزمایشی</span>
+            <span className="block text-sm font-extrabold">SOC Noooob</span>
+            <span className="block text-[11px] text-muted">راهنمای شروع به کار و دوره آزمایشی</span>
           </div>
         </div>
 
