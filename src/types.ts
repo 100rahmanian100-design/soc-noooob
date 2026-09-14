@@ -81,9 +81,6 @@ export const TASK_KEYS: Record<string, string[]> = {
     'p1-splunk-es-videos',
     'p1-splunk-basics-room',
     'p1-splunk-investigate',
-    'p1-lab-access',
-    'p1-real-project',
-    'p1-review',
   ],
   'phase-2': [
     'p2-sec450-net',
@@ -93,8 +90,6 @@ export const TASK_KEYS: Record<string, string[]> = {
     'p2-dns',
     'p2-web',
     'p2-foundations',
-    'p2-reports',
-    'p2-review',
   ],
   'phase-3': [
     'p3-win-sysmon',
@@ -103,11 +98,8 @@ export const TASK_KEYS: Record<string, string[]> = {
     'p3-linux',
     'p3-linux-mon',
     'p3-hidps-video',
-    'p3-reports',
-    'p3-scenarios',
-    'p3-review',
   ],
-  'phase-4': ['p4-training', 'p4-access', 'p4-shift', 'p4-sec-event', 'p4-fine-tuning'],
+  'phase-4': [],
 };
 
 export const ALL_TASK_KEYS = Object.values(TASK_KEYS).flat();

@@ -30,12 +30,37 @@ const TH = ({ children }: { children: React.ReactNode }) => (
   </th>
 );
 
-function TRow({ topic, learn, practice }: { topic: string; learn: React.ReactNode; practice: React.ReactNode }) {
+function TRow({
+  topic,
+  learn,
+  practice,
+  taskKeys,
+  progress,
+  onMarkSeen,
+}: {
+  topic: string;
+  learn: React.ReactNode;
+  practice: React.ReactNode;
+  taskKeys: string[];
+  progress: Record<string, boolean>;
+  onMarkSeen: (keys: string[]) => void;
+}) {
+  const seen = taskKeys.length > 0 && taskKeys.every((key) => progress[key] === true);
   return (
-    <tr className="border-b border-line align-top">
+    <tr className={`border-b border-line align-top ${seen ? 'guide-row-seen' : ''}`}>
       <td className="break-words px-3 py-3 font-semibold">{topic}</td>
       <td className="px-3 py-3">{learn}</td>
       <td className="px-3 py-3">{practice}</td>
+      <td className="px-3 py-3 text-center">
+        <button
+          type="button"
+          className={`seen-button ${seen ? 'is-seen' : ''}`}
+          onClick={() => onMarkSeen(taskKeys)}
+          aria-pressed={seen}
+        >
+          {seen ? 'مشاهده شد ✓' : 'مشاهده شد'}
+        </button>
+      </td>
     </tr>
   );
 }
@@ -49,9 +74,9 @@ const H3 = ({ children }: { children: React.ReactNode }) => (
   </h3>
 );
 
-const BULLET = ({ children, marker = true }: { children: React.ReactNode; marker?: boolean }) => (
+const BULLET = ({ children }: { children: React.ReactNode }) => (
   <li className="flex items-start gap-2.5 leading-8">
-    {marker && <span className="mt-3.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />}
+    <span className="mt-3.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
     <span className="min-w-0 flex-1 break-words">{children}</span>
   </li>
 );
@@ -63,71 +88,6 @@ const NOTE = ({ children }: { children: React.ReactNode }) => (
 );
 
 const TABLE_WRAP = 'table-wrap guide-table overflow-x-auto rounded-xl border border-line';
-
-function Task({
-  k,
-  checked,
-  onToggle,
-  inline = false,
-  children,
-}: {
-  k: string;
-  checked: boolean;
-  onToggle: (k: string) => void;
-  inline?: boolean;
-  children: React.ReactNode;
-}) {
-  const box = (
-    <>
-      <input
-        id={`task-${k}`}
-        type="checkbox"
-        checked={checked}
-        onChange={() => onToggle(k)}
-        className="h-4 w-4 shrink-0 cursor-pointer bg-transparent p-0 accent-[oklch(85%_0.135_112)]"
-      />
-      <label
-        htmlFor={`task-${k}`}
-        className={`m-0 inline min-w-0 flex-1 cursor-pointer break-words leading-7 ${checked ? 'text-muted line-through' : ''}`}
-      >
-        {children}
-      </label>
-    </>
-  );
-  if (inline) return <span className="flex w-full min-w-0 items-start gap-2.5 leading-8">{box}</span>;
-  return <li className="flex items-start gap-2.5 leading-8">{box}</li>;
-}
-
-/** چک‌باکس کنار هر دوره/تمرین — کاربر وقتی منبع را دید یا انجام داد تیک می‌زند */
-function Ck({
-  k,
-  checked,
-  onToggle,
-  children,
-}: {
-  k: string;
-  checked: boolean;
-  onToggle: (k: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="flex w-full min-w-0 items-start gap-2 align-top">
-      <input
-        id={`task-${k}`}
-        type="checkbox"
-        checked={checked}
-        onChange={() => onToggle(k)}
-        className="mt-1.5 h-4 w-4 shrink-0 cursor-pointer bg-transparent p-0 accent-[oklch(85%_0.135_112)]"
-      />
-      <label
-        htmlFor={`task-${k}`}
-        className={`m-0 inline min-w-0 flex-1 cursor-pointer break-words leading-7 ${checked ? 'text-muted line-through' : ''}`}
-      >
-        {children}
-      </label>
-    </span>
-  );
-}
 
 function ProgressBar({ pct }: { pct: number }) {
   return (
@@ -338,9 +298,10 @@ export default function GuidePage({ account, view, navigate, focusCommentId, foc
     apiGetProgress().then((res) => setProgress(res.progress ?? {}));
   }, []);
 
-  const toggle = (k: string) => {
+  const markRowsSeen = (keys: string[]) => {
     setProgress((prev) => {
-      const next = { ...prev, [k]: !prev[k] };
+      const next = { ...prev };
+      for (const key of keys) next[key] = true;
       void apiSetProgress(next);
       return next;
     });
@@ -357,7 +318,7 @@ export default function GuidePage({ account, view, navigate, focusCommentId, foc
     const bodyProps = {
       account,
       progress,
-      toggle,
+      markRowsSeen,
       focusCommentId,
       focusNonce,
     };
@@ -379,7 +340,7 @@ export default function GuidePage({ account, view, navigate, focusCommentId, foc
 interface BodyProps {
   account: PublicAccount;
   progress: Record<string, boolean>;
-  toggle: (k: string) => void;
+  markRowsSeen: (keys: string[]) => void;
   focusCommentId?: string | null;
   focusNonce?: number;
 }
@@ -387,7 +348,7 @@ interface BodyProps {
 const WRAP = 'rounded-2xl border border-line bg-surface p-5 min-w-0';
 
 /* ------------------------------------------------ فاز ۱: آموزش SIEM */
-function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: BodyProps) {
+function Phase1Body({ account, progress, markRowsSeen, focusCommentId, focusNonce }: BodyProps) {
   return (
     <section className={WRAP}>
       <H3>جدول سرفصل‌ها و منابع فاز ۱</H3>
@@ -398,70 +359,53 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
               <TH>سرفصل</TH>
               <TH>منبع آموزشی</TH>
               <TH>منبع تمرین</TH>
+              <TH>وضعیت</TH>
             </tr>
           </thead>
           <tbody>
             <TRow
               topic="مبانی تیم آبی و SOC"
-              learn={
-                <Ck k="p1-sec450" checked={!!progress['p1-sec450']} onToggle={toggle}>
-                  مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
-                </Ck>
-              }
+              taskKeys={['p1-sec450']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
+              learn={<>مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱</>}
               practice={<span className="text-muted">—</span>}
             />
             <TRow
               topic="آموزش استفاده از Elastic"
+              taskKeys={['p1-elastic-course', 'p1-elastic-video1', 'p1-elastic-basics', 'p1-elastic-query']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
               learn={
-                <>
-                  <Ck k="p1-elastic-course" checked={!!progress['p1-elastic-course']} onToggle={toggle}>
-                    <L href="https://www.elastic.co/training/free">دوره آموزشی سایت Elastic</L>
-                  </Ck>
-                  <br />
-                  <Ck k="p1-elastic-video1" checked={!!progress['p1-elastic-video1']} onToggle={toggle}>
-                    <L href="/courses/elastic-log-semantics-m1">ویدئوی شماره یک ماژول Elastic از ویدئوهای Log Semantics</L>
-                  </Ck>
-                </>
+                <div className="space-y-2">
+                  <div><L href="https://www.elastic.co/training/free">دوره آموزشی سایت Elastic</L></div>
+                  <div><L href="/courses/elastic-log-semantics-m1">ویدئوی شماره یک ماژول Elastic از ویدئوهای Log Semantics</L></div>
+                </div>
               }
               practice={
-                <>
-                  <Ck k="p1-elastic-basics" checked={!!progress['p1-elastic-basics']} onToggle={toggle}>
-                    <L href="https://tryhackme.com/room/elasticstackthebasics">Elastic Stack: The Basics</L>
-                  </Ck>
-                  <br />
-                  <Ck k="p1-elastic-query" checked={!!progress['p1-elastic-query']} onToggle={toggle}>
-                    <L href="https://tryhackme.com/room/elasticquerylanguages">Elastic: Query Languages</L>
-                  </Ck>
-                </>
+                <div className="space-y-2">
+                  <div><L href="https://tryhackme.com/room/elasticstackthebasics">Elastic Stack: The Basics</L></div>
+                  <div><L href="https://tryhackme.com/room/elasticquerylanguages">Elastic: Query Languages</L></div>
+                </div>
               }
             />
             <TRow
               topic="آموزش استفاده از Splunk"
+              taskKeys={['p1-splunk-fund1', 'p1-splunk-fund2-m10', 'p1-splunk-es-videos', 'p1-splunk-basics-room', 'p1-splunk-investigate']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
               learn={
-                <>
-                  <Ck k="p1-splunk-fund1" checked={!!progress['p1-splunk-fund1']} onToggle={toggle}>
-                    <L href="https://www.splunk.com/en_us/training/free-courses/splunk-fundamentals-1.html">دوره Splunk Fundamentals 1</L>
-                  </Ck>
-                  <br />
-                  <Ck k="p1-splunk-fund2-m10" checked={!!progress['p1-splunk-fund2-m10']} onToggle={toggle}>
-                    <L href="/courses/splunk-fundamentals-2-m10">ماژول ۱۰ دوره Splunk Fundamentals 2</L>
-                  </Ck>
-                  <br />
-                  <Ck k="p1-splunk-es-videos" checked={!!progress['p1-splunk-es-videos']} onToggle={toggle}>
-                    <L href="/courses/splunk-es-part1-2">ویدئوهای شماره ۱ و ۲ آموزش ES</L>
-                  </Ck>
-                </>
+                <div className="space-y-2">
+                  <div><L href="https://www.splunk.com/en_us/training/free-courses/splunk-fundamentals-1.html">دوره Splunk Fundamentals 1</L></div>
+                  <div><L href="/courses/splunk-fundamentals-2-m10">ماژول ۱۰ دوره Splunk Fundamentals 2</L></div>
+                  <div><L href="/courses/splunk-es-part1-2">ویدئوهای شماره ۱ و ۲ آموزش ES</L></div>
+                </div>
               }
               practice={
-                <>
-                  <Ck k="p1-splunk-basics-room" checked={!!progress['p1-splunk-basics-room']} onToggle={toggle}>
-                    <L href="https://tryhackme.com/room/splunk100">Splunk Basics - Did you SIEM?</L>
-                  </Ck>
-                  <br />
-                  <Ck k="p1-splunk-investigate" checked={!!progress['p1-splunk-investigate']} onToggle={toggle}>
-                    <L href="https://tryhackme.com/room/investigatingwithsplunk">Investigating with Splunk</L>
-                  </Ck>
-                </>
+                <div className="space-y-2">
+                  <div><L href="https://tryhackme.com/room/splunk100">Splunk Basics - Did you SIEM?</L></div>
+                  <div><L href="https://tryhackme.com/room/investigatingwithsplunk">Investigating with Splunk</L></div>
+                </div>
               }
             />
           </tbody>
@@ -472,21 +416,9 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
       <ul className="mt-2 space-y-1">
         <BULLET>دسترسی <L href="https://tryhackme.com">TryHackMe</L> از طرف کارشناس لایه سه ارسال خواهد شد.</BULLET>
         <BULLET>با آغاز این فاز دسترسی به ۴ ماشین SIEM به‌صورت آزمایشی برقرار خواهد شد؛ لطفاً برای تمرین از این ماشین‌ها استفاده کنید.</BULLET>
-        <BULLET marker={false}>
-          <Task k="p1-lab-access" checked={!!progress['p1-lab-access']} onToggle={toggle} inline>
-            دسترسی به Elastic و Splunk آزمایشگاه MSSP (<L href="/docs/mssp-lab-access-guide">راهنمای دسترسی</L>)
-          </Task>
-        </BULLET>
-        <BULLET marker={false}>
-          <Task k="p1-real-project" checked={!!progress['p1-real-project']} onToggle={toggle} inline>
-            دسترسی به یک پروژه Elastic و Splunk واقعی (توسط کارشناس لایه سه ارسال خواهد شد)
-          </Task>
-        </BULLET>
-        <BULLET marker={false}>
-          <Task k="p1-review" checked={!!progress['p1-review']} onToggle={toggle} inline>
-            پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
-          </Task>
-        </BULLET>
+        <BULLET>دسترسی به Elastic و Splunk آزمایشگاه MSSP (<L href="/docs/mssp-lab-access-guide">راهنمای دسترسی</L>)</BULLET>
+        <BULLET>دسترسی به یک پروژه Elastic و Splunk واقعی (توسط کارشناس لایه سه ارسال خواهد شد)</BULLET>
+        <BULLET>پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.</BULLET>
       </ul>
 
       <CommentSection
@@ -501,7 +433,7 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
 }
 
 /* ------------------------------------------------ فاز ۲: آموزش شبکه */
-function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: BodyProps) {
+function Phase2Body({ account, progress, markRowsSeen, focusCommentId, focusNonce }: BodyProps) {
   return (
     <section className={WRAP}>
       <H3>جدول سرفصل‌ها و منابع فاز ۲</H3>
@@ -512,60 +444,54 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
               <TH>سرفصل</TH>
               <TH>منبع آموزشی</TH>
               <TH>منبع تمرین</TH>
+              <TH>وضعیت</TH>
             </tr>
           </thead>
           <tbody>
             <TRow
               topic="تشخیص تهدیدات شبکه"
+              taskKeys={['p2-sec450-net', 'p2-net-video', 'p2-wireshark', 'p2-nsm']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
               learn={
                 <>
-                  <Ck k="p2-sec450-net" checked={!!progress['p2-sec450-net']} onToggle={toggle}>
-                    مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
-                  </Ck>
-                  <br />
-                  <Ck k="p2-net-video" checked={!!progress['p2-net-video']} onToggle={toggle}>
-                    <L href="/courses/log-semantics-network">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
-                  </Ck>
+                  <div>مطابق با سرفصل ارائه شده SANS SEC 450 در پیوست ۱</div>
+                  <div><L href="/courses/log-semantics-network">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L></div>
                 </>
               }
               practice={
                 <>
-                  <Ck k="p2-wireshark" checked={!!progress['p2-wireshark']} onToggle={toggle}>
-                    <L href="https://tryhackme.com/room/wiresharktrafficanalysis">Wireshark: Traffic Analysis</L>
-                  </Ck>
-                  <br />
-                  <Ck k="p2-nsm" checked={!!progress['p2-nsm']} onToggle={toggle}>
-                    <L href="https://tryhackme.com/module/network-security-monitoring">Network Security Monitoring (except Snort)</L>
-                  </Ck>
+                  <div><L href="https://tryhackme.com/room/wiresharktrafficanalysis">Wireshark: Traffic Analysis</L></div>
+                  <div><L href="https://tryhackme.com/module/network-security-monitoring">Network Security Monitoring (except Snort)</L></div>
                 </>
               }
             />
             <TRow
               topic="تشخیص تهدیدات DNS"
+              taskKeys={['p2-dns']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
               learn={
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <Ck k="p2-dns" checked={!!progress['p2-dns']} onToggle={toggle}>
-                    <L href="/courses/log-semantics-dns">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
-                  </Ck>
+                  <L href="/courses/log-semantics-dns">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                 </>
               }
               practice={<span className="text-muted">—</span>}
             />
             <TRow
               topic="تشخیص تهدیدات Web"
+              taskKeys={['p2-web', 'p2-foundations']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
               learn={
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <Ck k="p2-web" checked={!!progress['p2-web']} onToggle={toggle}>
-                    <L href="/courses/log-semantics-web">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
-                  </Ck>
+                  <L href="/courses/log-semantics-web">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                   <br />
-                  <Ck k="p2-foundations" checked={!!progress['p2-foundations']} onToggle={toggle}>
-                    <L href="/portal/soc-t1-d-foundations">مسیر Soc T1 D – Foundations در پرتال آموزشی</L>
-                  </Ck>
+                  <L href="/portal/soc-t1-d-foundations">مسیر Soc T1 D – Foundations در پرتال آموزشی</L>
                 </>
               }
               practice={<span className="text-muted">—</span>}
@@ -579,16 +505,8 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         <BULLET>
           دسترسی <L href="https://tryhackme.com">TryHackMe</L> و <L href="/portal">پرتال آموزشی</L> از طرف کارشناس لایه سه ارسال خواهد شد.
         </BULLET>
-        <BULLET marker={false}>
-          <Task k="p2-reports" checked={!!progress['p2-reports']} onToggle={toggle} inline>
-            لطفاً در حین یادگیری، روی پروژه‌های واقعی نیز یوزکیس‌های آموزش‌داده‌شده بررسی شوند و موارد مشکوک مشاهده‌شده در پروژه‌ها در قالب یک گزارش کوتاه برای کارشناس لایه سه ارسال شود. این گزارش‌ها بخشی از مرحله ارزیابی این فاز به حساب می‌آیند.
-          </Task>
-        </BULLET>
-        <BULLET marker={false}>
-          <Task k="p2-review" checked={!!progress['p2-review']} onToggle={toggle} inline>
-            پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
-          </Task>
-        </BULLET>
+        <BULLET>لطفاً در حین یادگیری، روی پروژه‌های واقعی نیز یوزکیس‌های آموزش‌داده‌شده بررسی شوند و موارد مشکوک مشاهده‌شده در پروژه‌ها در قالب یک گزارش کوتاه برای کارشناس لایه سه ارسال شود. این گزارش‌ها بخشی از مرحله ارزیابی این فاز به حساب می‌آیند.</BULLET>
+        <BULLET>پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.</BULLET>
       </ul>
 
       <CommentSection
@@ -603,7 +521,7 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
 }
 
 /* ------------------------------------------------ فاز ۳: آموزش Endpoint */
-function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: BodyProps) {
+function Phase3Body({ account, progress, markRowsSeen, focusCommentId, focusNonce }: BodyProps) {
   return (
     <section className={WRAP}>
       <H3>جدول سرفصل‌ها و منابع فاز ۳</H3>
@@ -614,54 +532,50 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
               <TH>سرفصل</TH>
               <TH>منبع آموزشی</TH>
               <TH>منبع تمرین</TH>
+              <TH>وضعیت</TH>
             </tr>
           </thead>
           <tbody>
             <TRow
               topic="تشخیص تهدیدات ویندوز"
+              taskKeys={['p3-win-sysmon', 'p3-win-video', 'p3-win-mon']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
               learn={
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <Ck k="p3-win-sysmon" checked={!!progress['p3-win-sysmon']} onToggle={toggle}>
-                    <L href="/tools/sysmon-guide">Sysmon</L>
-                  </Ck>
+                  <L href="/tools/sysmon-guide">Sysmon</L>
                   <br />
-                  <Ck k="p3-win-video" checked={!!progress['p3-win-video']} onToggle={toggle}>
-                    <L href="/courses/log-semantics-windows">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
-                  </Ck>
+                  <L href="/courses/log-semantics-windows">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                 </>
               }
               practice={
-                <Ck k="p3-win-mon" checked={!!progress['p3-win-mon']} onToggle={toggle}>
-                  <L href="https://tryhackme.com/module/windows-security-monitoring">Windows Security Monitoring</L>
-                </Ck>
+                <L href="https://tryhackme.com/module/windows-security-monitoring">Windows Security Monitoring</L>
               }
             />
             <TRow
               topic="تشخیص تهدیدات لینوکس"
+              taskKeys={['p3-linux', 'p3-linux-mon']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
               learn={
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <Ck k="p3-linux" checked={!!progress['p3-linux']} onToggle={toggle}>
-                    <L href="/courses/log-semantics-linux">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
-                  </Ck>
+                  <L href="/courses/log-semantics-linux">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                 </>
               }
               practice={
-                <Ck k="p3-linux-mon" checked={!!progress['p3-linux-mon']} onToggle={toggle}>
-                  <L href="https://tryhackme.com/module/linux-security-monitoring">Linux Security Monitoring</L>
-                </Ck>
+                <L href="https://tryhackme.com/module/linux-security-monitoring">Linux Security Monitoring</L>
               }
             />
             <TRow
               topic="بررسی هشدارهای HIDPS"
-              learn={
-                <Ck k="p3-hidps-video" checked={!!progress['p3-hidps-video']} onToggle={toggle}>
-                  <L href="/courses/log-semantics-hidps">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
-                </Ck>
-              }
+              taskKeys={['p3-hidps-video']}
+              progress={progress}
+              onMarkSeen={markRowsSeen}
+              learn={<L href="/courses/log-semantics-hidps">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>}
               practice={<span className="text-muted">—</span>}
             />
           </tbody>
@@ -671,21 +585,9 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
       <H3>روند ادامهٔ کار و ارزیابی فاز ۳</H3>
       <ul className="mt-2 space-y-1">
         <BULLET>دسترسی <L href="https://tryhackme.com">TryHackMe</L> از طرف کارشناس لایه سه ارسال خواهد شد.</BULLET>
-        <BULLET marker={false}>
-          <Task k="p3-reports" checked={!!progress['p3-reports']} onToggle={toggle} inline>
-            لطفاً در حین یادگیری، روی پروژه‌های واقعی نیز یوزکیس‌های آموزش‌داده‌شده بررسی شوند و موارد مشکوک مشاهده‌شده در پروژه‌ها در قالب یک گزارش کوتاه برای کارشناس لایه سه ارسال شود. این گزارش‌ها بخشی از مرحله ارزیابی این فاز به حساب می‌آیند.
-          </Task>
-        </BULLET>
-        <BULLET marker={false}>
-          <Task k="p3-scenarios" checked={!!progress['p3-scenarios']} onToggle={toggle} inline>
-            در این فاز چند سناریوی عملی نیز توسط کارشناس لایه سه ارسال خواهند شد. این سناریوها بایستی در محیط آزمایشگاه پیاده‌سازی شده و نتیجه آن در قالب گزارش به کارشناس لایه سه ارسال گردد. این گزارش بخشی از مرحله ارزیابی این فاز به حساب می‌آید.
-          </Task>
-        </BULLET>
-        <BULLET marker={false}>
-          <Task k="p3-review" checked={!!progress['p3-review']} onToggle={toggle} inline>
-            پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
-          </Task>
-        </BULLET>
+        <BULLET>لطفاً در حین یادگیری، روی پروژه‌های واقعی نیز یوزکیس‌های آموزش‌داده‌شده بررسی شوند و موارد مشکوک مشاهده‌شده در پروژه‌ها در قالب یک گزارش کوتاه برای کارشناس لایه سه ارسال شود. این گزارش‌ها بخشی از مرحله ارزیابی این فاز به حساب می‌آیند.</BULLET>
+        <BULLET>در این فاز چند سناریوی عملی نیز توسط کارشناس لایه سه ارسال خواهند شد. این سناریوها بایستی در محیط آزمایشگاه پیاده‌سازی شده و نتیجه آن در قالب گزارش به کارشناس لایه سه ارسال گردد. این گزارش بخشی از مرحله ارزیابی این فاز به حساب می‌آید.</BULLET>
+        <BULLET>پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.</BULLET>
       </ul>
 
       <CommentSection
@@ -700,21 +602,13 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
 }
 
 /* ------------------------------------------------ فاز ۴: Onboarding */
-function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: BodyProps) {
+function Phase4Body({ account, focusCommentId, focusNonce }: BodyProps) {
   return (
     <section className={WRAP}>
       <H3>شرح فرآیندها و آموزش‌ها</H3>
       <ul className="space-y-1">
-        <BULLET marker={false}>
-          <Task k="p4-training" checked={!!progress['p4-training']} onToggle={toggle} inline>
-            در این فاز روندها و فرآیندهای تکمیلی و سیاست‌های رصد و پایش مختص پروژه‌های رینگ توسط کارشناس لایه دو و مدیر سرویس رینگ مربوطه آموزش داده خواهد شد.
-          </Task>
-        </BULLET>
-        <BULLET marker={false}>
-          <Task k="p4-access" checked={!!progress['p4-access']} onToggle={toggle} inline>
-            در این فاز دسترسی پروژه‌های رینگ از طرف کارشناس لایه دو و مدیر سرویس ارسال خواهد شد.
-          </Task>
-        </BULLET>
+        <BULLET>در این فاز روندها و فرآیندهای تکمیلی و سیاست‌های رصد و پایش مختص پروژه‌های رینگ توسط کارشناس لایه دو و مدیر سرویس رینگ مربوطه آموزش داده خواهد شد.</BULLET>
+        <BULLET>در این فاز دسترسی پروژه‌های رینگ از طرف کارشناس لایه دو و مدیر سرویس ارسال خواهد شد.</BULLET>
         <BULLET>
           ارزیابی این فاز توسط کارشناس لایه دو و مدیر سرویس رینگ بر پایه{' '}
           <strong className="text-accent">OKRهای</strong> زیر صورت خواهد پذیرفت.
@@ -724,24 +618,13 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
       <H3>روند ارزیابی و OKRهای فاز ۴</H3>
       <ol className="mt-2 flex list-decimal flex-col gap-1 ps-5 pe-1 text-sm">
         <li>
-          <Task k="p4-shift" checked={!!progress['p4-shift']} onToggle={toggle} inline>
-            <strong>OKR 1:</strong> رصد و پایش هر پروژه حداقل به اندازه یک شیفت اداری
-          </Task>
+          <strong>OKR 1:</strong> رصد و پایش هر پروژه حداقل به اندازه یک شیفت اداری
         </li>
         <li>
-          <Task k="p4-sec-event" checked={!!progress['p4-sec-event']} onToggle={toggle} inline>
-            <strong>OKR 2:</strong> ثبت یک تیکت Security Event به ازای هر پروژه در سامانه جیرا
-          </Task>
+          <strong>OKR 2:</strong> ثبت یک تیکت Security Event به ازای هر پروژه در سامانه جیرا
         </li>
         <li>
-          <Task
-            k="p4-fine-tuning"
-            checked={!!progress['p4-fine-tuning']}
-            onToggle={toggle}
-            inline
-          >
-            <strong>OKR 3:</strong> ثبت حداقل یک تیکت Fine Tuning به ازای هر فناوری SIEM (یک تیکت برای Elastic و یک تیکت برای Splunk) در سامانه جیرا
-          </Task>
+          <strong>OKR 3:</strong> ثبت حداقل یک تیکت Fine Tuning به ازای هر فناوری SIEM (یک تیکت برای Elastic و یک تیکت برای Splunk) در سامانه جیرا
         </li>
       </ol>
 
