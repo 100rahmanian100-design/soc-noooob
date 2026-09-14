@@ -26,31 +26,12 @@ function parseHash(): { route: Route; focusCommentId: string | null } {
   return { route, focusCommentId };
 }
 
-const THEME_KEY = 'erm-theme';
-function readTheme(): 'dark' | 'light' {
-  try {
-    return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
-  } catch {
-    return 'dark';
-  }
-}
-
 export default function App() {
   const [account, setAccount] = useState<PublicAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [route, setRoute] = useState<Route>(parseHash().route);
   const [focus, setFocus] = useState<{ commentId: string; nonce: number } | null>(null);
-  const [theme, setTheme] = useState<'dark' | 'light'>(readTheme);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try {
-      localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      /* ignore */
-    }
-  }, [theme]);
 
   useEffect(() => {
     const onHash = () => {
@@ -139,8 +120,6 @@ export default function App() {
         <Topbar
           view={route}
           account={account}
-          theme={theme}
-          onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
           onToggleMenu={() => setMenuOpen((o) => !o)}
           onLogout={() => void onLogout()}
           onOpenComment={openComment}

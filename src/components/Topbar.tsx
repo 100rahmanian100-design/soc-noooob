@@ -6,8 +6,6 @@ import type { Route } from '../App';
 interface Props {
   view: Route;
   account: PublicAccount;
-  theme: 'dark' | 'light';
-  onToggleTheme: () => void;
   onToggleMenu: () => void;
   onLogout: () => void;
   /** برای deep-link و پرش به فاز + پیام مربوطه */
@@ -38,7 +36,7 @@ function fmtRelative(iso: string): string {
   }
 }
 
-export default function Topbar({ view, account, theme, onToggleTheme, onToggleMenu, onLogout, onOpenComment }: Props) {
+export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment }: Props) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -114,16 +112,6 @@ export default function Topbar({ view, account, theme, onToggleTheme, onToggleMe
           aria-label="باز و بسته کردن منو"
         >
           ☰
-        </button>
-
-        {/* کلید تم */}
-        <button
-          className="plain icon"
-          onClick={onToggleTheme}
-          title={theme === 'dark' ? 'تم روشن' : 'تم تیره'}
-          aria-label="تغییر پوسته"
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
         </button>
 
         {/* زنگوله اعلان‌ها */}

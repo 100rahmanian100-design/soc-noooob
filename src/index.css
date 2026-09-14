@@ -24,9 +24,7 @@
    (همان رنگ‌ها، همان UI)
    ———————————————————————————————————————————————— */
 :root{color-scheme:dark;--bg:oklch(17% .008 105);--side:oklch(19% .008 105);--surface:oklch(22% .009 105);--raised:oklch(26% .01 105);--line:oklch(32% .012 105);--text:oklch(93% .008 105);--muted:oklch(70% .012 105);--accent:oklch(85% .135 112);--ink:oklch(23% .03 112);--red:oklch(77% .115 28);--amber:oklch(83% .12 77);--radius:16px}
-[data-theme='light']{color-scheme:light;--bg:oklch(97% .007 105);--side:oklch(94% .01 105);--surface:oklch(99% .005 105);--raised:oklch(92% .013 105);--line:oklch(84% .012 105);--text:oklch(24% .015 105);--muted:oklch(46% .018 105);--accent:oklch(84% .145 112);--red:oklch(47% .17 28);--amber:oklch(46% .11 77)}
 html{color-scheme:dark}
-html[data-theme='light']{color-scheme:light}
 
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.85 Vazirmatn,system-ui,sans-serif;font-optical-sizing:auto}
