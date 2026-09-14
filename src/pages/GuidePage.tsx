@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { apiGetProgress, apiSetProgress } from '../api';
+import { apiChangePassword, apiGetProgress, apiSetProgress } from '../api';
 import type { PublicAccount } from '../types';
 import { summarizeProgress } from '../types';
 import CommentSection from '../components/CommentSection';
@@ -291,11 +291,109 @@ function HomeView({
           </button>
         </div>
       </header>
+      <ChangeOwnPassword />
       <p className="text-xs text-muted">
         کاربر: <strong className="text-text">{account.username}</strong> · نقش:{' '}
         {account.role === 'superadmin' ? 'سوپر ادمین' : account.role === 'admin' ? 'ادمین' : 'کاربر'}
       </p>
     </div>
+  );
+}
+
+function ChangeOwnPassword() {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setMessage('');
+    setError('');
+    if (newPassword !== confirmPassword) {
+      setError('رمز عبور جدید و تکرار آن یکسان نیستند.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await apiChangePassword(currentPassword, newPassword);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setMessage(String(res.message ?? 'رمز عبور با موفقیت تغییر کرد.'));
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-base font-bold">
+        <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+        تغییر رمز عبور
+      </h2>
+      <p className="mb-4 text-xs text-muted">برای تغییر رمز، ابتدا رمز فعلی حساب خود را وارد کنید.</p>
+      {message && <p className="mb-3 rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-xs text-ok">{message}</p>}
+      {error && <p className="mb-3 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
+      <form onSubmit={submit} autoComplete="off" className="grid gap-3 md:grid-cols-3">
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-muted">رمز فعلی</span>
+          <input
+            dir="ltr"
+            name="current-password"
+            autoComplete="current-password"
+            type="password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            required
+            className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-muted">رمز جدید</span>
+          <input
+            dir="ltr"
+            name="new-password"
+            autoComplete="new-password"
+            type="password"
+            minLength={8}
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            required
+            className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-muted">تکرار رمز جدید</span>
+          <input
+            dir="ltr"
+            name="confirm-password"
+            autoComplete="new-password"
+            type="password"
+            minLength={8}
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            required
+            className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+          />
+        </label>
+        <div className="md:col-span-3 md:flex md:justify-end">
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full rounded-lg border-0 bg-accent px-5 py-2.5 font-bold text-ink transition hover:opacity-90 disabled:opacity-50 md:w-auto"
+          >
+            {busy ? 'در حال ذخیره…' : 'ذخیره رمز جدید'}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 
