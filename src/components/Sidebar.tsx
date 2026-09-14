@@ -32,12 +32,12 @@ export default function Sidebar({ view, account, isAdmin, navigate, open, onClos
 
   return (
     <aside className={`sidebar${open ? ' open' : ''}`} aria-label="ناوبری اصلی">
-      {/* برند — دقیقاً مطابق سیستم مرجع */}
+      {/* برند — SOC Noooob */}
       <div className="brand">
-        <div className="brand-mark">e</div>
+        <div className="brand-mark">S</div>
         <div>
-          <b>ERMANIAN</b>
-          <small>SOC ACADEMY</small>
+          <b>SOC NOOOOB</b>
+          <small>ACADEMY</small>
         </div>
       </div>
 

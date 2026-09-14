@@ -61,10 +61,10 @@ export default function AuthPage({ account, onAuthed, navigate }: Props) {
       <div className="auth-copy">
         <div>
           <div className="brand" style={{ justifyContent: 'flex-start', marginBottom: 0 }}>
-            <div className="brand-mark">e</div>
+            <div className="brand-mark">S</div>
             <div>
-              <b>ERMANIAN</b>
-              <small>SOC ACADEMY</small>
+              <b>SOC NOOOOB</b>
+              <small>ACADEMY</small>
             </div>
           </div>
           <h2>SOC Noooob</h2>

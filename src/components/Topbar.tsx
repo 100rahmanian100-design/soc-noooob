@@ -103,7 +103,7 @@ export default function Topbar({ view, account, theme, onToggleTheme, onToggleMe
       {/* بردکرامب — مطابق سیستم مرجع */}
       <div className="breadcrumb">
         <span style={{ color: 'var(--text)', fontWeight: 600 }}>{VIEW_TITLES[view] ?? 'راهنما'}</span>
-        <span style={{ marginInlineStart: 10 }}>SOC Noooob · Ermanian</span>
+        <span style={{ marginInlineStart: 10 }}>SOC Noooob</span>
       </div>
 
       <div className="top-tools">

@@ -20,8 +20,8 @@
 }
 
 /* ————————————————————————————————————————————————
-   Ermanian Edition 02 — انتقال کامل CSS از سیستم مرجع
-   (Documents/soc/index.html) — همان رنگ‌ها، همان UI
+   SOC Noooob — انتقال کامل CSS از سیستم مرجع
+   (همان رنگ‌ها، همان UI)
    ———————————————————————————————————————————————— */
 :root{color-scheme:dark;--bg:oklch(17% .008 105);--side:oklch(19% .008 105);--surface:oklch(22% .009 105);--raised:oklch(26% .01 105);--line:oklch(32% .012 105);--text:oklch(93% .008 105);--muted:oklch(70% .012 105);--accent:oklch(85% .135 112);--ink:oklch(23% .03 112);--red:oklch(77% .115 28);--amber:oklch(83% .12 77);--radius:16px}
 [data-theme='light']{color-scheme:light;--bg:oklch(97% .007 105);--side:oklch(94% .01 105);--surface:oklch(99% .005 105);--raised:oklch(92% .013 105);--line:oklch(84% .012 105);--text:oklch(24% .015 105);--muted:oklch(46% .018 105);--accent:oklch(84% .145 112);--red:oklch(47% .17 28);--amber:oklch(46% .11 77)}

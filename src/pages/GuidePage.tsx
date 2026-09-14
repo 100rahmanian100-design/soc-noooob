@@ -95,6 +95,37 @@ function Task({
   return <li className="flex items-start gap-2.5 leading-8">{box}</li>;
 }
 
+/** چک‌باکس کنار هر دوره/تمرین — کاربر وقتی منبع را دید یا انجام داد تیک می‌زند */
+function Ck({
+  k,
+  checked,
+  onToggle,
+  children,
+}: {
+  k: string;
+  checked: boolean;
+  onToggle: (k: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-start gap-2 align-top">
+      <input
+        id={`task-${k}`}
+        type="checkbox"
+        checked={checked}
+        onChange={() => onToggle(k)}
+        className="mt-1.5 h-4 w-4 shrink-0 cursor-pointer bg-transparent p-0 accent-[oklch(85%_0.135_112)]"
+      />
+      <label
+        htmlFor={`task-${k}`}
+        className={`m-0 inline cursor-pointer leading-7 ${checked ? 'text-muted line-through' : ''}`}
+      >
+        {children}
+      </label>
+    </span>
+  );
+}
+
 function ProgressBar({ pct }: { pct: number }) {
   return (
     <div
@@ -368,23 +399,35 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
           <tbody>
             <TRow
               topic="مبانی تیم آبی و SOC"
-              learn={<>مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱</>}
+              learn={
+                <Ck k="p1-sec450" checked={!!progress['p1-sec450']} onToggle={toggle}>
+                  مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
+                </Ck>
+              }
               practice={<span className="text-muted">—</span>}
             />
             <TRow
               topic="آموزش استفاده از Elastic"
               learn={
                 <>
-                  <L href="https://www.elastic.co/training/free">دوره آموزشی سایت Elastic</L>
+                  <Ck k="p1-elastic-course" checked={!!progress['p1-elastic-course']} onToggle={toggle}>
+                    <L href="https://www.elastic.co/training/free">دوره آموزشی سایت Elastic</L>
+                  </Ck>
                   <br />
-                  <L href="/courses/elastic-log-semantics-m1">ویدئوی شماره یک ماژول Elastic از ویدئوهای Log Semantics</L>
+                  <Ck k="p1-elastic-video1" checked={!!progress['p1-elastic-video1']} onToggle={toggle}>
+                    <L href="/courses/elastic-log-semantics-m1">ویدئوی شماره یک ماژول Elastic از ویدئوهای Log Semantics</L>
+                  </Ck>
                 </>
               }
               practice={
                 <>
-                  <L href="https://tryhackme.com/room/elasticstackthebasics">Elastic Stack: The Basics</L>
+                  <Ck k="p1-elastic-basics" checked={!!progress['p1-elastic-basics']} onToggle={toggle}>
+                    <L href="https://tryhackme.com/room/elasticstackthebasics">Elastic Stack: The Basics</L>
+                  </Ck>
                   <br />
-                  <L href="https://tryhackme.com/room/elasticquerylanguages">Elastic: Query Languages</L>
+                  <Ck k="p1-elastic-query" checked={!!progress['p1-elastic-query']} onToggle={toggle}>
+                    <L href="https://tryhackme.com/room/elasticquerylanguages">Elastic: Query Languages</L>
+                  </Ck>
                 </>
               }
             />
@@ -392,18 +435,28 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
               topic="آموزش استفاده از Splunk"
               learn={
                 <>
-                  <L href="https://www.splunk.com/en_us/training/free-courses/splunk-fundamentals-1.html">دوره Splunk Fundamentals 1</L>
+                  <Ck k="p1-splunk-fund1" checked={!!progress['p1-splunk-fund1']} onToggle={toggle}>
+                    <L href="https://www.splunk.com/en_us/training/free-courses/splunk-fundamentals-1.html">دوره Splunk Fundamentals 1</L>
+                  </Ck>
                   <br />
-                  <L href="/courses/splunk-fundamentals-2-m10">ماژول ۱۰ دوره Splunk Fundamentals 2</L>
+                  <Ck k="p1-splunk-fund2-m10" checked={!!progress['p1-splunk-fund2-m10']} onToggle={toggle}>
+                    <L href="/courses/splunk-fundamentals-2-m10">ماژول ۱۰ دوره Splunk Fundamentals 2</L>
+                  </Ck>
                   <br />
-                  <L href="/courses/splunk-es-part1-2">ویدئوهای شماره ۱ و ۲ آموزش ES</L>
+                  <Ck k="p1-splunk-es-videos" checked={!!progress['p1-splunk-es-videos']} onToggle={toggle}>
+                    <L href="/courses/splunk-es-part1-2">ویدئوهای شماره ۱ و ۲ آموزش ES</L>
+                  </Ck>
                 </>
               }
               practice={
                 <>
-                  <L href="https://tryhackme.com/room/splunk100">Splunk Basics - Did you SIEM?</L>
+                  <Ck k="p1-splunk-basics-room" checked={!!progress['p1-splunk-basics-room']} onToggle={toggle}>
+                    <L href="https://tryhackme.com/room/splunk100">Splunk Basics - Did you SIEM?</L>
+                  </Ck>
                   <br />
-                  <L href="https://tryhackme.com/room/investigatingwithsplunk">Investigating with Splunk</L>
+                  <Ck k="p1-splunk-investigate" checked={!!progress['p1-splunk-investigate']} onToggle={toggle}>
+                    <L href="https://tryhackme.com/room/investigatingwithsplunk">Investigating with Splunk</L>
+                  </Ck>
                 </>
               }
             />
@@ -411,43 +464,12 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>چک‌لیست تعاملی تسک‌های فاز ۱ (۲ هفته)</H3>
+      <H3>تسک‌های عملی فاز ۱ (۲ هفته)</H3>
+      <p className="muted small" style={{ margin: '4px 0 0' }}>
+        دوره‌ها و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل تیک‌زدن
+        هستند.
+      </p>
       <ul className="mt-2 space-y-1">
-        <Task k="p1-sec450" checked={!!progress['p1-sec450']} onToggle={toggle}>
-          مطالعه مبانی تیم آبی و SOC بر اساس سرفصل SANS SEC450 (در پیوست ۱)
-        </Task>
-        <Task k="p1-elastic-course" checked={!!progress['p1-elastic-course']} onToggle={toggle}>
-          گذراندن دوره آموزشی رایگان سایت <L href="https://www.elastic.co/training/free">Elastic</L>
-        </Task>
-        <Task k="p1-elastic-video1" checked={!!progress['p1-elastic-video1']} onToggle={toggle}>
-          تماشای ویدئوی شماره یک ماژول Elastic از ویدئوهای Log Semantics
-        </Task>
-        <Task k="p1-elastic-basics" checked={!!progress['p1-elastic-basics']} onToggle={toggle}>
-          تکمیل تمرین{' '}
-          <L href="https://tryhackme.com/room/elasticstackthebasics">Elastic Stack: The Basics</L>
-        </Task>
-        <Task k="p1-elastic-query" checked={!!progress['p1-elastic-query']} onToggle={toggle}>
-          تکمیل تمرین{' '}
-          <L href="https://tryhackme.com/room/elasticquerylanguages">Elastic: Query Languages</L>
-        </Task>
-        <Task k="p1-splunk-fund1" checked={!!progress['p1-splunk-fund1']} onToggle={toggle}>
-          گذراندن دوره{' '}
-          <L href="https://www.splunk.com/en_us/training/free-courses/splunk-fundamentals-1.html">Splunk Fundamentals 1</L>
-        </Task>
-        <Task k="p1-splunk-fund2-m10" checked={!!progress['p1-splunk-fund2-m10']} onToggle={toggle}>
-          مطالعه ماژول ۱۰ دوره Splunk Fundamentals 2
-        </Task>
-        <Task k="p1-splunk-es-videos" checked={!!progress['p1-splunk-es-videos']} onToggle={toggle}>
-          تماشای ویدئوهای شماره ۱ و ۲ آموزش Splunk ES
-        </Task>
-        <Task k="p1-splunk-basics-room" checked={!!progress['p1-splunk-basics-room']} onToggle={toggle}>
-          تکمیل تمرین{' '}
-          <L href="https://tryhackme.com/room/splunk100">Splunk Basics - Did you SIEM?</L>
-        </Task>
-        <Task k="p1-splunk-investigate" checked={!!progress['p1-splunk-investigate']} onToggle={toggle}>
-          تکمیل تمرین{' '}
-          <L href="https://tryhackme.com/room/investigatingwithsplunk">Investigating with Splunk</L>
-        </Task>
         <Task k="p1-lab-access" checked={!!progress['p1-lab-access']} onToggle={toggle}>
           راه‌اندازی و اتصال به ماشین‌های Elastic و Splunk آزمایشگاه MSSP{' '}
           (<L href="/docs/mssp-lab-access-guide">راهنمای دسترسی</L>)
@@ -490,16 +512,24 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
               topic="تشخیص تهدیدات شبکه"
               learn={
                 <>
-                  مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
+                  <Ck k="p2-sec450-net" checked={!!progress['p2-sec450-net']} onToggle={toggle}>
+                    مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
+                  </Ck>
                   <br />
-                  <L href="/courses/log-semantics-network">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <Ck k="p2-net-video" checked={!!progress['p2-net-video']} onToggle={toggle}>
+                    <L href="/courses/log-semantics-network">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  </Ck>
                 </>
               }
               practice={
                 <>
-                  <L href="https://tryhackme.com/room/wiresharktrafficanalysis">Wireshark: Traffic Analysis</L>
+                  <Ck k="p2-wireshark" checked={!!progress['p2-wireshark']} onToggle={toggle}>
+                    <L href="https://tryhackme.com/room/wiresharktrafficanalysis">Wireshark: Traffic Analysis</L>
+                  </Ck>
                   <br />
-                  <L href="https://tryhackme.com/module/network-security-monitoring">Network Security Monitoring (except Snort)</L>
+                  <Ck k="p2-nsm" checked={!!progress['p2-nsm']} onToggle={toggle}>
+                    <L href="https://tryhackme.com/module/network-security-monitoring">Network Security Monitoring (except Snort)</L>
+                  </Ck>
                 </>
               }
             />
@@ -509,7 +539,9 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <L href="/courses/log-semantics-dns">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <Ck k="p2-dns" checked={!!progress['p2-dns']} onToggle={toggle}>
+                    <L href="/courses/log-semantics-dns">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  </Ck>
                 </>
               }
               practice={<span className="text-muted">—</span>}
@@ -520,9 +552,13 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <L href="/courses/log-semantics-web">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <Ck k="p2-web" checked={!!progress['p2-web']} onToggle={toggle}>
+                    <L href="/courses/log-semantics-web">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  </Ck>
                   <br />
-                  <L href="/portal/soc-t1-d-foundations">مسیر Soc T1 D – Foundations در پرتال آموزشی</L>
+                  <Ck k="p2-foundations" checked={!!progress['p2-foundations']} onToggle={toggle}>
+                    <L href="/portal/soc-t1-d-foundations">مسیر Soc T1 D – Foundations در پرتال آموزشی</L>
+                  </Ck>
                 </>
               }
               practice={<span className="text-muted">—</span>}
@@ -531,31 +567,12 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>چک‌لیست تعاملی تسک‌های فاز ۲ (۲ هفته)</H3>
+      <H3>تسک‌های عملی فاز ۲ (۲ هفته)</H3>
+      <p className="muted small" style={{ margin: '4px 0 0' }}>
+        دوره‌ها و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل تیک‌زدن
+        هستند.
+      </p>
       <ul className="mt-2 space-y-1">
-        <Task k="p2-sec450-net" checked={!!progress['p2-sec450-net']} onToggle={toggle}>
-          مطالعه سرفصل تهدیدات شبکه از SANS SEC450
-        </Task>
-        <Task k="p2-net-video" checked={!!progress['p2-net-video']} onToggle={toggle}>
-          تماشای ویدئوی تشخیص تهدیدات شبکه در Log Semantics
-        </Task>
-        <Task k="p2-wireshark" checked={!!progress['p2-wireshark']} onToggle={toggle}>
-          تکمیل روم{' '}
-          <L href="https://tryhackme.com/room/wiresharktrafficanalysis">Wireshark: Traffic Analysis</L>
-        </Task>
-        <Task k="p2-nsm" checked={!!progress['p2-nsm']} onToggle={toggle}>
-          تکمیل ماژول{' '}
-          <L href="https://tryhackme.com/module/network-security-monitoring">Network Security Monitoring (except Snort)</L>
-        </Task>
-        <Task k="p2-dns" checked={!!progress['p2-dns']} onToggle={toggle}>
-          مطالعه تهدیدات DNS و تماشای ویدئوی DNS در Log Semantics
-        </Task>
-        <Task k="p2-web" checked={!!progress['p2-web']} onToggle={toggle}>
-          مطالعه تهدیدات Web و تماشای ویدئوی Web در Log Semantics
-        </Task>
-        <Task k="p2-foundations" checked={!!progress['p2-foundations']} onToggle={toggle}>
-          تکمیل مسیر <L href="/portal/soc-t1-d-foundations">Soc T1 D – Foundations</L> در پرتال آموزشی
-        </Task>
         <Task k="p2-reports" checked={!!progress['p2-reports']} onToggle={toggle}>
           بررسی یوزکیس‌ها روی پروژه‌های واقعی و ارسال گزارش موارد مشکوک به کارشناس لایه ۳
         </Task>
@@ -601,13 +618,19 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <L href="/tools/sysmon-guide">Sysmon</L>
+                  <Ck k="p3-win-sysmon" checked={!!progress['p3-win-sysmon']} onToggle={toggle}>
+                    <L href="/tools/sysmon-guide">Sysmon</L>
+                  </Ck>
                   <br />
-                  <L href="/courses/log-semantics-windows">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <Ck k="p3-win-video" checked={!!progress['p3-win-video']} onToggle={toggle}>
+                    <L href="/courses/log-semantics-windows">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  </Ck>
                 </>
               }
               practice={
-                <L href="https://tryhackme.com/module/windows-security-monitoring">Windows Security Monitoring</L>
+                <Ck k="p3-win-mon" checked={!!progress['p3-win-mon']} onToggle={toggle}>
+                  <L href="https://tryhackme.com/module/windows-security-monitoring">Windows Security Monitoring</L>
+                </Ck>
               }
             />
             <TRow
@@ -616,17 +639,23 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <L href="/courses/log-semantics-linux">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <Ck k="p3-linux" checked={!!progress['p3-linux']} onToggle={toggle}>
+                    <L href="/courses/log-semantics-linux">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  </Ck>
                 </>
               }
               practice={
-                <L href="https://tryhackme.com/module/linux-security-monitoring">Linux Security Monitoring</L>
+                <Ck k="p3-linux-mon" checked={!!progress['p3-linux-mon']} onToggle={toggle}>
+                  <L href="https://tryhackme.com/module/linux-security-monitoring">Linux Security Monitoring</L>
+                </Ck>
               }
             />
             <TRow
               topic="بررسی هشدارهای HIDPS"
               learn={
-                <L href="/courses/log-semantics-hidps">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                <Ck k="p3-hidps-video" checked={!!progress['p3-hidps-video']} onToggle={toggle}>
+                  <L href="/courses/log-semantics-hidps">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                </Ck>
               }
               practice={<span className="text-muted">—</span>}
             />
@@ -634,28 +663,12 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>چک‌لیست تعاملی تسک‌های فاز ۳ (۱ هفته)</H3>
+      <H3>تسک‌های عملی فاز ۳ (۱ هفته)</H3>
+      <p className="muted small" style={{ margin: '4px 0 0' }}>
+        دوره‌ها، مستندات و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل
+        تیک‌زدن هستند.
+      </p>
       <ul className="mt-2 space-y-1">
-        <Task k="p3-win-sysmon" checked={!!progress['p3-win-sysmon']} onToggle={toggle}>
-          مطالعه تهدیدات ویندوز و مستند <L href="/tools/sysmon-guide">Sysmon</L>
-        </Task>
-        <Task k="p3-win-video" checked={!!progress['p3-win-video']} onToggle={toggle}>
-          تماشای ویدئوی ویندوز در Log Semantics
-        </Task>
-        <Task k="p3-win-mon" checked={!!progress['p3-win-mon']} onToggle={toggle}>
-          تکمیل ماژول{' '}
-          <L href="https://tryhackme.com/module/windows-security-monitoring">Windows Security Monitoring</L>
-        </Task>
-        <Task k="p3-linux" checked={!!progress['p3-linux']} onToggle={toggle}>
-          مطالعه تهدیدات لینوکس و تماشای ویدئوی لینوکس در Log Semantics
-        </Task>
-        <Task k="p3-linux-mon" checked={!!progress['p3-linux-mon']} onToggle={toggle}>
-          تکمیل ماژول{' '}
-          <L href="https://tryhackme.com/module/linux-security-monitoring">Linux Security Monitoring</L>
-        </Task>
-        <Task k="p3-hidps-video" checked={!!progress['p3-hidps-video']} onToggle={toggle}>
-          تماشای ویدئوی بررسی هشدارهای HIDPS در Log Semantics
-        </Task>
         <Task k="p3-scenarios" checked={!!progress['p3-scenarios']} onToggle={toggle}>
           پیاده‌سازی سناریوهای عملی ارسالی توسط کارشناس لایه ۳ در آزمایشگاه و ارسال نتیجه
         </Task>
@@ -694,7 +707,7 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </BULLET>
       </ul>
 
-      <H3>چک‌لیست تعاملی تسک‌ها و OKRهای فاز ۴ (۱ هفته)</H3>
+      <H3>تسک‌ها و OKRهای فاز ۴ (۱ هفته)</H3>
       <ul className="mt-2 space-y-1">
         <Task k="p4-training" checked={!!progress['p4-training']} onToggle={toggle}>
           آموزش روندها و سیاست‌های رصد پروژه‌های رینگ توسط کارشناس لایه ۲ و مدیر سرویس
