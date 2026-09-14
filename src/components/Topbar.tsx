@@ -102,8 +102,6 @@ export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenCo
       <div className="breadcrumb">
         <span style={{ color: 'var(--text)', fontWeight: 600 }}>{VIEW_TITLES[view] ?? 'راهنما'}</span>
       </div>
-      <span className="topbar-brand">SOC Noooob</span>
-
       <div className="top-tools">
         {/* منوی موبایل — فقط در نمایش ≤۸۰۰px دیده می‌شود (کلاس مرجع) */}
         <button
