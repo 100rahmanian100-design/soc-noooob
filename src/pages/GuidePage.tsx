@@ -162,6 +162,7 @@ const PHASE_META: Array<{
 ];
 
 function PhaseHeader({ meta, pct }: { meta: (typeof PHASE_META)[number]; pct: number }) {
+  const hasProgress = meta.id !== 'phase-4';
   return (
     <header className="rounded-2xl border border-line bg-surface p-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -173,13 +174,13 @@ function PhaseHeader({ meta, pct }: { meta: (typeof PHASE_META)[number]; pct: nu
           <h1 className="text-xl font-extrabold">{meta.title}</h1>
         </div>
       </div>
-      <div className="mt-4">
+      {hasProgress && <div className="mt-4">
         <div className="mb-1 flex items-center justify-between text-xs">
           <span className="text-muted">پیشرفت فاز</span>
           <span className={`font-bold ${pct === 100 ? 'text-ok' : 'text-accent'}`}>{pct}٪</span>
         </div>
         <ProgressBar pct={pct} />
-      </div>
+      </div>}
     </header>
   );
 }
@@ -257,12 +258,18 @@ function HomeView({
                   </span>
                   <span className="pill ms-auto">{m.pill.replace('بازه زمانی: ', '')}</span>
                 </div>
-                <div className="mt-3">
-                  <ProgressBar pct={s.pct} />
-                </div>
-                <p className="mt-1 text-[11px] text-muted">
-                  {s.done}/{s.total} منبع · {s.pct}٪
-                </p>
+                {m.id === 'phase-4' ? (
+                  <p className="mt-3 text-[11px] text-muted">این فاز پایش پیشرفت ندارد.</p>
+                ) : (
+                  <>
+                    <div className="mt-3">
+                      <ProgressBar pct={s.pct} />
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted">
+                      {s.done}/{s.total} منبع · {s.pct}٪
+                    </p>
+                  </>
+                )}
               </button>
             );
           })}

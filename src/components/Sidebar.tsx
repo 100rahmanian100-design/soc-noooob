@@ -28,7 +28,9 @@ const ROLE_FA: Record<string, string> = {
 };
 
 export default function Sidebar({ view, account, isAdmin, navigate, open, onClose, onLogout }: Props) {
-  const items = NAV_ITEMS.filter((it) => !it.adminOnly || isAdmin);
+  const items = isAdmin
+    ? NAV_ITEMS.filter((it) => it.adminOnly)
+    : NAV_ITEMS.filter((it) => !it.adminOnly);
 
   return (
     <aside className={`sidebar${open ? ' open' : ''}`} aria-label="ناوبری اصلی">
@@ -41,7 +43,7 @@ export default function Sidebar({ view, account, isAdmin, navigate, open, onClos
         </div>
       </div>
 
-      <div className="nav-label">دوره آزمایشی</div>
+      <div className="nav-label">{isAdmin ? 'مدیریت سیستم' : 'دوره آزمایشی'}</div>
       <nav className="nav">
         {items.map((it) => (
           <button

@@ -24,6 +24,8 @@ const ALL_PHASES = [
 ] as const;
 
 const PHASE_FA = ['فاز ۱', 'فاز ۲', 'فاز ۳', 'فاز ۴'] as const;
+const PROGRESS_PHASES = ALL_PHASES.slice(0, 3);
+const PROGRESS_PHASE_FA = PHASE_FA.slice(0, 3);
 
 const TASK_LABELS: Record<string, string> = {
   'p1-sec450': 'مطالعه مبانی تیم آبی و SOC (SEC450)',
@@ -61,6 +63,20 @@ const roleBadge = (role: Role) =>
 function fmtDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString('fa-IR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return iso;
+  }
+}
+
+function fmtDateTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('fa-IR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
     return iso;
   }
@@ -226,7 +242,7 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
         پایش پیشرفت کاربران
       </h2>
       <p className="mb-4 text-xs text-muted">
-        درصد پیشرفت هر کاربر در فازهای ۱ تا ۴ به‌صورت زنده از چک‌لیست‌های ثبت‌شده محاسبه می‌شود.
+        درصد پیشرفت هر کاربر در فازهای ۱ تا ۳ بر اساس منابع مشاهده‌شده به‌صورت زنده به‌روزرسانی می‌شود.
       </p>
 
       {inspectUser && (
@@ -245,7 +261,7 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
                 <th className="px-3 py-2.5 text-start text-xs font-bold text-muted">کاربر</th>
                 <th className="px-3 py-2.5 text-start text-xs font-bold text-muted">ایمیل</th>
                 <th className="px-3 py-2.5 text-start text-xs font-bold text-muted">تاریخ عضویت</th>
-                {PHASE_FA.map((p) => (
+                {PROGRESS_PHASE_FA.map((p) => (
                   <th key={p} className="px-3 py-2.5 text-center text-xs font-bold text-muted">
                     {p}
                   </th>
@@ -256,7 +272,7 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
             </thead>
             <tbody>
               {rows.map((r) => {
-                const per = ALL_PHASES.map(([id]) => r.summary.perPhase[id]?.pct ?? 0);
+                const per = PROGRESS_PHASES.map(([id]) => r.summary.perPhase[id]?.pct ?? 0);
                 return (
                   <tr key={r.username} className="border-t border-line align-middle">
                     <td className="px-3 py-3">
@@ -380,7 +396,7 @@ function InspectModal({ username, onClose }: { username: string; onClose: () => 
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl border border-line bg-surface p-5 shadow-2xl"
+        className="w-full max-w-4xl rounded-2xl border border-line bg-surface p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3">
@@ -428,7 +444,7 @@ function InspectModal({ username, onClose }: { username: string; onClose: () => 
 
             {/* تفکیک فازها */}
             <div className="grid gap-3 sm:grid-cols-2">
-              {ALL_PHASES.map(([id, label], i) => {
+              {PROGRESS_PHASES.map(([id, label], i) => {
                 const s = data.summary.perPhase[id] ?? { done: 0, total: 0, pct: 0 };
                 return (
                   <div key={id} className="rounded-xl border border-line bg-bg p-3">
@@ -478,7 +494,7 @@ function InspectModal({ username, onClose }: { username: string; onClose: () => 
                   هنوز هیچ پیام یا گزارشی ثبت نشده است.
                 </p>
               ) : (
-                <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-line bg-bg p-3">
+                <div className="admin-message-list max-h-64 space-y-2 overflow-y-auto rounded-xl border border-line bg-bg p-3">
                   {data.comments.map((c) => (
                     <div key={c.id} className="rounded-lg border border-line bg-surface p-3">
                       <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted">
@@ -489,7 +505,7 @@ function InspectModal({ username, onClose }: { username: string; onClose: () => 
                           {ALL_PHASES.find(([p]) => p === c.phase)?.[1] ?? c.phase}
                         </span>
                         <span>{c.parentId ? '↩ پاسخ' : c.answered ? '✓ پاسخ داده شد' : c.authorRole === 'user' ? 'در انتظار پاسخ' : 'پیام ادمین'}</span>
-                        <span className="ms-auto">{fmtDate(c.createdAt)}</span>
+                        <span className="ms-auto">{fmtDateTime(c.createdAt)}</span>
                       </div>
                       <p className="mt-1 whitespace-pre-wrap text-xs leading-6 text-muted">{c.text}</p>
                     </div>
@@ -751,7 +767,7 @@ function CommentInbox({ account }: { account: PublicAccount }) {
                     <header className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-bold" dir="ltr">{root.author}</span>
                       {unreadCommentIds.has(root.id) && <span className="pill fresh-pill"><span className="dot" />جدید</span>}
-                      <span className="ms-auto text-[10px] text-muted">{fmtDate(root.createdAt)}</span>
+                      <span className="ms-auto text-[10px] text-muted">{fmtDateTime(root.createdAt)}</span>
                     </header>
                     <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6">{root.text}</p>
 
@@ -760,7 +776,7 @@ function CommentInbox({ account }: { account: PublicAccount }) {
                         <header className="flex flex-wrap items-center gap-2">
                           <span className="text-[11px] font-bold" dir="ltr">{replyComment.author}</span>
                           <span className="pill">{ROLE_LABEL[replyComment.authorRole]}</span>
-                          <span className="ms-auto text-[10px] text-muted">{fmtDate(replyComment.createdAt)}</span>
+                          <span className="ms-auto text-[10px] text-muted">{fmtDateTime(replyComment.createdAt)}</span>
                         </header>
                         <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-6">{replyComment.text}</p>
                       </article>

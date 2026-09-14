@@ -92,21 +92,24 @@ export default function App() {
         account={account}
         onAuthed={(a) => {
           setAccount(a);
-          window.location.hash = '#/home';
-          setRoute('home');
+          const nextRoute: Route = a.role === 'admin' || a.role === 'superadmin' ? 'admin' : 'home';
+          window.location.hash = `#/${nextRoute}`;
+          setRoute(nextRoute);
         }}
         navigate={navigate}
       />
     );
   }
 
-  const showAdmin = route === 'admin' && isAdmin;
-  const guideView: GuideView = showAdmin ? 'home' : ((route as GuideView) ?? 'home');
+  // ادمین و سوپرادمین فقط پنل مدیریت را می‌بینند؛ حتی با ورود مستقیم به لینک فاز.
+  const effectiveRoute: Route = isAdmin ? 'admin' : route === 'admin' ? 'home' : route;
+  const showAdmin = isAdmin;
+  const guideView: GuideView = (effectiveRoute as GuideView) ?? 'home';
 
   return (
     <div className="min-h-screen">
       <Sidebar
-        view={route}
+        view={effectiveRoute}
         account={account}
         isAdmin={isAdmin}
         navigate={navigate}
@@ -118,7 +121,7 @@ export default function App() {
       {/* شل — مطابق سیستم مرجع: .shell + .topbar + .content */}
       <div className="shell">
         <Topbar
-          view={route}
+          view={effectiveRoute}
           account={account}
           onToggleMenu={() => setMenuOpen((o) => !o)}
           onLogout={() => void onLogout()}
@@ -126,7 +129,7 @@ export default function App() {
         />
 
         <main className="content">
-          <div key={route} className="view-enter fade">
+          <div key={effectiveRoute} className="view-enter fade">
             {showAdmin ? (
               <AdminPage account={account} />
             ) : (

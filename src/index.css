@@ -221,19 +221,26 @@ pre{direction:ltr;text-align:left;overflow:auto;margin:0;padding:24px;color:var(
 
 /* صندوق پیام‌های ادمین: سه گام مستقل و خوانا */
 .comment-inbox{overflow:hidden}
-.comment-inbox-layout{display:grid;grid-template-columns:minmax(210px,1fr) minmax(210px,1fr) minmax(300px,1.45fr);gap:16px}
+.comment-inbox-layout{display:grid;grid-template-columns:minmax(220px,.9fr) minmax(220px,.9fr) minmax(420px,1.8fr);gap:20px}
 .inbox-step-title{margin:0 0 10px;font-size:12px;color:var(--muted);font-weight:700}
 .inbox-user-card,.inbox-phase-card{display:flex;align-items:center;gap:10px;width:100%;min-width:0;text-align:start;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 12px}
 .inbox-user-card:hover,.inbox-phase-card:hover,.inbox-user-card.selected,.inbox-phase-card.selected{background:var(--raised);border-color:color-mix(in oklch,var(--accent) 60%,var(--line))}
 .inbox-counts{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap;flex:none}
 .inbox-counts .pill{font-size:10px;padding:3px 7px;white-space:nowrap}
 .fresh-pill{color:var(--red);border-color:var(--red)!important}
-.inbox-thread{border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:12px}
+.inbox-thread{border:1px solid var(--line);border-radius:14px;background:var(--bg);padding:18px}
 .inbox-thread.unread{border-color:var(--red)}
-.inbox-reply{margin-top:12px;border-inline-start:2px solid var(--line);padding-inline-start:10px}
+.inbox-thread>p{font-size:14px;line-height:2;overflow-wrap:anywhere}
+.inbox-reply{margin-top:16px;border-inline-start:2px solid var(--line);padding-inline-start:14px}
+.inbox-reply p{font-size:13px;line-height:2}
+.comment-inbox textarea{min-height:96px;font-size:14px;line-height:2}
+.comment-inbox .inbox-thread header{min-height:28px}
+.admin-message-list{max-height:420px!important}
+.admin-message-list>div p{font-size:14px;line-height:2}
 
 @media(min-width:1500px){.content{padding:48px 60px}.welcome{min-height:320px}.welcome-copy{padding:44px}.topbar{padding-inline:60px}}
 
+@media(max-width:1450px){.comment-inbox-layout{grid-template-columns:minmax(190px,1fr) minmax(190px,1fr) minmax(360px,1.5fr)}}
 @media(max-width:1250px){.comment-inbox-layout{grid-template-columns:minmax(190px,1fr) minmax(190px,1fr)}}
 @media(max-width:1100px){.sidebar{width:205px;padding-inline:12px}.shell{margin-inline-start:205px}.content{padding:28px 24px}.topbar{padding:16px 24px}.global-search{display:none}.welcome-copy{padding:28px}.split{gap:24px}.signal-art{padding:12px}.playbook-grid{grid-template-columns:minmax(0,1fr)}.sticky-notes{position:static;border-top:1px solid var(--line)}.auth-layout{gap:32px}.admin-layout{grid-template-columns:1fr}.comment-inbox-layout{grid-template-columns:1fr 1fr}.comment-inbox-layout>div:last-child{grid-column:1/-1}}
 
