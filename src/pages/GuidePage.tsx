@@ -206,10 +206,11 @@ function PhaseHeader({ meta, pct }: { meta: (typeof PHASE_META)[number]; pct: nu
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-2xl">{meta.emoji}</span>
         <div>
-          <p className="text-xs font-bold text-accent">{meta.no}</p>
+          <p className="text-xs font-bold text-accent">
+            {meta.no} <span className="font-medium text-muted">({meta.pill.replace('بازه زمانی: ', '')})</span>
+          </p>
           <h1 className="text-xl font-extrabold">{meta.title}</h1>
         </div>
-        <span className="pill ms-auto">{meta.pill}</span>
       </div>
       <div className="mt-4">
         <div className="mb-1 flex items-center justify-between text-xs">
@@ -467,7 +468,7 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>تسک‌های عملی فاز ۱ (۲ هفته)</H3>
+      <H3>تسک‌های عملی فاز ۱</H3>
       <p className="muted small" style={{ margin: '4px 0 0' }}>
         دوره‌ها و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل تیک‌زدن
         هستند.
@@ -570,7 +571,7 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>تسک‌های عملی فاز ۲ (۲ هفته)</H3>
+      <H3>تسک‌های عملی فاز ۲</H3>
       <p className="muted small" style={{ margin: '4px 0 0' }}>
         دوره‌ها و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل تیک‌زدن
         هستند.
@@ -666,7 +667,7 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </table>
       </div>
 
-      <H3>تسک‌های عملی فاز ۳ (۱ هفته)</H3>
+      <H3>تسک‌های عملی فاز ۳</H3>
       <p className="muted small" style={{ margin: '4px 0 0' }}>
         دوره‌ها، مستندات و تمرین‌های بالا در جدول تیک می‌خورند؛ تسک‌های عملی زیر هم جداگانه قابل
         تیک‌زدن هستند.
@@ -710,7 +711,7 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         </BULLET>
       </ul>
 
-      <H3>تسک‌ها و OKRهای فاز ۴ (۱ هفته)</H3>
+      <H3>تسک‌ها و OKRهای فاز ۴</H3>
       <ul className="mt-2 space-y-1">
         <Task k="p4-training" checked={!!progress['p4-training']} onToggle={toggle}>
           آموزش روندها و سیاست‌های رصد پروژه‌های رینگ توسط کارشناس لایه ۲ و مدیر سرویس
