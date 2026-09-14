@@ -88,6 +88,7 @@ const NOTE = ({ children }: { children: React.ReactNode }) => (
 );
 
 const TABLE_WRAP = 'table-wrap guide-table overflow-x-auto rounded-xl border border-line';
+const PHASE_TABLE_WRAP = `${TABLE_WRAP} phase-resource-table`;
 
 function ProgressBar({ pct }: { pct: number }) {
   return (
@@ -224,7 +225,7 @@ function HomeView({
         </div>
         <p className="mt-3 text-sm leading-7 text-muted">
           خلاصه دوره آزمایشی <strong className="text-text">(شهریور – مهر)</strong> و وضعیت کلی پیشرفت شما.
-          با تکمیل چک‌لیست‌های هر فاز، نوار پیشرفت به‌صورت زنده به‌روزرسانی می‌شود.
+          با ثبت وضعیت منابع هر فاز، نوار پیشرفت به‌صورت زنده به‌روزرسانی می‌شود.
         </p>
 
         <div className="mt-5 rounded-xl border border-line bg-bg p-4">
@@ -236,7 +237,7 @@ function HomeView({
             <ProgressBar pct={summary.total.pct} />
           </div>
           <p className="mt-2 text-xs text-muted">
-            {summary.total.done} از {summary.total.total} تسک تکمیل شده است.
+            {summary.total.done} از {summary.total.total} منبع مشاهده شده است.
           </p>
         </div>
 
@@ -260,7 +261,7 @@ function HomeView({
                   <ProgressBar pct={s.pct} />
                 </div>
                 <p className="mt-1 text-[11px] text-muted">
-                  {s.done}/{s.total} تسک · {s.pct}٪
+                  {s.done}/{s.total} منبع · {s.pct}٪
                 </p>
               </button>
             );
@@ -352,7 +353,7 @@ function Phase1Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
   return (
     <section className={WRAP}>
       <H3>جدول سرفصل‌ها و منابع فاز ۱</H3>
-      <div className={TABLE_WRAP}>
+      <div className={PHASE_TABLE_WRAP}>
         <table className="w-full text-sm">
           <thead>
             <tr>
@@ -437,7 +438,7 @@ function Phase2Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
   return (
     <section className={WRAP}>
       <H3>جدول سرفصل‌ها و منابع فاز ۲</H3>
-      <div className={TABLE_WRAP}>
+      <div className={PHASE_TABLE_WRAP}>
         <table className="w-full text-sm">
           <thead>
             <tr>
@@ -525,7 +526,7 @@ function Phase3Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
   return (
     <section className={WRAP}>
       <H3>جدول سرفصل‌ها و منابع فاز ۳</H3>
-      <div className={TABLE_WRAP}>
+      <div className={PHASE_TABLE_WRAP}>
         <table className="w-full text-sm">
           <thead>
             <tr>

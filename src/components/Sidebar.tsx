@@ -43,7 +43,7 @@ export default function Sidebar({ view, account, isAdmin, navigate, open, onClos
 
       <div className="nav-label">دوره آزمایشی</div>
       <nav className="nav">
-        {items.map((it, i) => (
+        {items.map((it) => (
           <button
             key={it.id}
             className={view === it.id ? 'active' : undefined}
@@ -52,7 +52,6 @@ export default function Sidebar({ view, account, isAdmin, navigate, open, onClos
               onClose();
             }}
           >
-            <span className="mono">{String(i + 1).padStart(2, '0')}</span>
             <span>{it.label}</span>
             {view === it.id && <span className="dot nav-num" aria-hidden="true" />}
           </button>

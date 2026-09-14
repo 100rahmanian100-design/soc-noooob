@@ -68,7 +68,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   user: 'کاربر',
 };
 
-/** کلیدهای تسک هر فاز — باید با PROGRESS_TASK_KEYS بک‌اند هم‌راستا باشد */
+/** کلیدهای منابع هر فاز — باید با PROGRESS_TASK_KEYS بک‌اند هم‌راستا باشد */
 export const TASK_KEYS: Record<string, string[]> = {
   'phase-1': [
     'p1-sec450',

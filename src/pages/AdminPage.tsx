@@ -36,9 +36,6 @@ const TASK_LABELS: Record<string, string> = {
   'p1-splunk-es-videos': 'ویدئوهای ۱ و ۲ آموزش Splunk ES',
   'p1-splunk-basics-room': 'تمرین Splunk Basics - Did you SIEM?',
   'p1-splunk-investigate': 'تمرین Investigating with Splunk',
-  'p1-lab-access': 'اتصال به ماشین‌های آزمایشگاه MSSP',
-  'p1-real-project': 'تمرین روی پروژه واقعی Elastic/Splunk',
-  'p1-review': 'جلسه ارزیابی پایان فاز ۱',
   'p2-sec450-net': 'مطالعه تهدیدات شبکه (SEC450)',
   'p2-net-video': 'ویدئوی تشخیص تهدیدات شبکه',
   'p2-wireshark': 'روم Wireshark: Traffic Analysis',
@@ -46,22 +43,12 @@ const TASK_LABELS: Record<string, string> = {
   'p2-dns': 'تهدیدات DNS و ویدئوی DNS',
   'p2-web': 'تهدیدات Web و ویدئوی Web',
   'p2-foundations': 'مسیر Soc T1 D – Foundations',
-  'p2-reports': 'گزارش موارد مشکوک به لایه ۳',
-  'p2-review': 'جلسه ارزیابی پایان فاز ۲',
   'p3-win-sysmon': 'تهدیدات ویندوز و مستند Sysmon',
   'p3-win-video': 'ویدئوی ویندوز (Log Semantics)',
   'p3-win-mon': 'ماژول Windows Security Monitoring',
   'p3-linux': 'تهدیدات لینوکس و ویدئوی لینوکس',
   'p3-linux-mon': 'ماژول Linux Security Monitoring',
   'p3-hidps-video': 'ویدئوی بررسی هشدارهای HIDPS',
-  'p3-reports': 'گزارش موارد مشکوک از پروژه‌های واقعی',
-  'p3-scenarios': 'سناریوهای عملی لایه ۳',
-  'p3-review': 'جلسه ارزیابی پایان فاز ۳',
-  'p4-training': 'آموزش روندهای رصد پروژه‌های رینگ',
-  'p4-access': 'دریافت دسترسی پروژه‌های رینگ',
-  'p4-shift': 'OKR 1 — رصد یک شیفت اداری',
-  'p4-sec-event': 'OKR 2 — تیکت Security Event',
-  'p4-fine-tuning': 'OKR 3 — تیکت Fine Tuning',
 };
 
 const roleBadge = (role: Role) =>
@@ -453,27 +440,23 @@ function InspectModal({ username, onClose }: { username: string; onClose: () => 
                       <div className="progress-fill" style={{ width: `${s.pct}%` }} />
                     </div>
                     <p className="mt-1 text-[10px] text-muted">
-                      {s.done}/{s.total} تسک تیک خورده
+                      {s.done}/{s.total} منبع مشاهده شده
                     </p>
                   </div>
                 );
               })}
             </div>
 
-            {/* چک‌باکس‌های تیک‌خورده */}
+            {/* وضعیت منابع مشاهده‌شده */}
             <div>
-              <h4 className="mb-2 text-xs font-bold text-muted">وضعیت تسک‌ها و چک‌باکس‌ها</h4>
+              <h4 className="mb-2 text-xs font-bold text-muted">وضعیت منابع هر فاز</h4>
               <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-line bg-bg p-3">
                 {ALL_PHASES.flatMap(([id]) => (TASK_KEYS[id] ?? []).map((k) => ({ id, k }))).map(({ id, k }) => {
                   const done = data.progress[k] === true;
                   return (
                     <div key={k} className="flex items-center gap-2 text-xs leading-6">
-                      <span
-                        className={`grid h-4 w-4 shrink-0 place-items-center rounded border text-[9px] ${
-                          done ? 'border-accent bg-accent text-ink' : 'border-line bg-raised text-muted'
-                        }`}
-                      >
-                        {done ? '✓' : ''}
+                      <span className={`inspect-status ${done ? 'is-seen' : ''}`}>
+                        {done ? 'مشاهده شد' : 'مشاهده نشده'}
                       </span>
                       <span className={done ? 'text-text' : 'text-muted'}>
                         <span className="ms-1 rounded bg-raised px-1 py-0.5 text-[9px] font-bold text-muted">

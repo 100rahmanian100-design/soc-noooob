@@ -94,7 +94,7 @@ export interface AccountsFile {
 
 export interface UserData {
   username: string;
-  /** وضعیت چک‌باکس‌های راهنما: key → true */
+  /** وضعیت منابع مشاهده‌شده راهنما: key → true */
   progress: Record<string, boolean>;
   updatedAt: string;
 }

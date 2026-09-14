@@ -77,7 +77,6 @@ code{direction:ltr;unicode-bidi:embed}
 .nav button svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6}
 .nav button.active{background:var(--raised);color:var(--text)}
 .nav button.active svg{color:var(--accent)}
-.nav button .nav-num{margin-inline-start:auto;font:11px monospace;color:var(--muted)}
 .side-bottom{margin-top:auto;padding-top:36px}
 .side-note{border-top:1px solid var(--line);padding:20px 10px;color:var(--muted);font-size:12px}
 .identity{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;gap:10px;align-items:center}
@@ -165,8 +164,6 @@ pre{direction:ltr;text-align:left;overflow:auto;margin:0;padding:24px;color:var(
 .step{display:flex;gap:16px;margin:24px 0}
 .step-number{font:13px monospace;background:var(--raised);border-radius:50%;width:30px;height:30px;flex:none;display:grid;place-items:center}
 .step p{margin:0;font-size:16px}
-.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;margin:12px 0}
-.check input{width:18px;height:18px;flex:none;margin-top:5px;accent-color:var(--accent)}
 .tabs{border-bottom:1px solid var(--line);display:flex;gap:12px;margin:24px 0}
 .tabs button{border:0;border-radius:0;color:var(--muted)}
 .tabs .active{color:var(--text);border-bottom:2px solid var(--accent)}
@@ -210,7 +207,17 @@ pre{direction:ltr;text-align:left;overflow:auto;margin:0;padding:24px;color:var(
 .guide-table td:first-child{font-weight:600}
 .guide-table label{display:inline;min-width:0;margin:0;overflow-wrap:break-word;word-break:normal}
 .guide-table a{overflow-wrap:break-word;word-break:normal}
-.content input[type='checkbox']{width:1rem;min-width:1rem;flex:none}
+.phase-resource-table table{min-width:760px}
+.phase-resource-table th:nth-child(1),.phase-resource-table td:nth-child(1){width:21%}
+.phase-resource-table th:nth-child(2),.phase-resource-table td:nth-child(2),.phase-resource-table th:nth-child(3),.phase-resource-table td:nth-child(3){width:31%}
+.phase-resource-table th:nth-child(4),.phase-resource-table td:nth-child(4){width:17%;text-align:center;vertical-align:middle}
+.phase-resource-table td:nth-child(2),.phase-resource-table td:nth-child(3){overflow-wrap:normal;word-break:normal}
+.seen-button{min-height:36px;max-width:100%;padding:5px 10px;border-color:var(--accent);color:var(--accent);font-size:12px;line-height:1.5;white-space:nowrap}
+.seen-button:hover,.seen-button.is-seen{background:var(--accent);color:var(--ink)}
+.guide-row-seen td{background:oklch(72% .14 155 / .09)}
+.guide-row-seen td:first-child{box-shadow:inset -3px 0 var(--ok, oklch(72% .14 155))}
+.inspect-status{display:inline-flex;align-items:center;justify-content:center;min-width:78px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted);font-size:10px;line-height:1.7;white-space:nowrap}
+.inspect-status.is-seen{border-color:var(--ok, oklch(72% .14 155));color:var(--ok, oklch(72% .14 155));background:oklch(72% .14 155 / .1)}
 
 /* صندوق پیام‌های ادمین: سه گام مستقل و خوانا */
 .comment-inbox{overflow:hidden}

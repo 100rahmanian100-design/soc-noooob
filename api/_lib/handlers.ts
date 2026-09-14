@@ -113,7 +113,7 @@ async function adminRecipientsForUser(author: Account): Promise<string[]> {
   return [...out];
 }
 
-/** کلیدهای تسک هر فاز — مبنای محاسبه درصد پیشرفت */
+/** کلیدهای منابع هر فاز — مبنای محاسبه درصد پیشرفت */
 export const PROGRESS_TASK_KEYS: Record<string, string[]> = {
   'phase-1': [
     'p1-sec450',
