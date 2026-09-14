@@ -49,10 +49,10 @@ const H3 = ({ children }: { children: React.ReactNode }) => (
   </h3>
 );
 
-const BULLET = ({ children }: { children: React.ReactNode }) => (
+const BULLET = ({ children, marker = true }: { children: React.ReactNode; marker?: boolean }) => (
   <li className="flex items-start gap-2.5 leading-8">
-    <span className="mt-3.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-    <span className="min-w-0 break-words">{children}</span>
+    {marker && <span className="mt-3.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />}
+    <span className="min-w-0 flex-1 break-words">{children}</span>
   </li>
 );
 
@@ -94,7 +94,7 @@ function Task({
       </label>
     </>
   );
-  if (inline) return <span className="inline-flex min-w-0 max-w-full items-start gap-2.5 leading-8">{box}</span>;
+  if (inline) return <span className="flex w-full min-w-0 items-start gap-2.5 leading-8">{box}</span>;
   return <li className="flex items-start gap-2.5 leading-8">{box}</li>;
 }
 
@@ -472,17 +472,17 @@ function Phase1Body({ account, progress, toggle, focusCommentId, focusNonce }: B
       <ul className="mt-2 space-y-1">
         <BULLET>دسترسی <L href="https://tryhackme.com">TryHackMe</L> از طرف کارشناس لایه سه ارسال خواهد شد.</BULLET>
         <BULLET>با آغاز این فاز دسترسی به ۴ ماشین SIEM به‌صورت آزمایشی برقرار خواهد شد؛ لطفاً برای تمرین از این ماشین‌ها استفاده کنید.</BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p1-lab-access" checked={!!progress['p1-lab-access']} onToggle={toggle} inline>
             دسترسی به Elastic و Splunk آزمایشگاه MSSP (<L href="/docs/mssp-lab-access-guide">راهنمای دسترسی</L>)
           </Task>
         </BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p1-real-project" checked={!!progress['p1-real-project']} onToggle={toggle} inline>
             دسترسی به یک پروژه Elastic و Splunk واقعی (توسط کارشناس لایه سه ارسال خواهد شد)
           </Task>
         </BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p1-review" checked={!!progress['p1-review']} onToggle={toggle} inline>
             پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
           </Task>
@@ -579,12 +579,12 @@ function Phase2Body({ account, progress, toggle, focusCommentId, focusNonce }: B
         <BULLET>
           دسترسی <L href="https://tryhackme.com">TryHackMe</L> و <L href="/portal">پرتال آموزشی</L> از طرف کارشناس لایه سه ارسال خواهد شد.
         </BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p2-reports" checked={!!progress['p2-reports']} onToggle={toggle} inline>
             لطفاً در حین یادگیری، روی پروژه‌های واقعی نیز یوزکیس‌های آموزش‌داده‌شده بررسی شوند و موارد مشکوک مشاهده‌شده در پروژه‌ها در قالب یک گزارش کوتاه برای کارشناس لایه سه ارسال شود. این گزارش‌ها بخشی از مرحله ارزیابی این فاز به حساب می‌آیند.
           </Task>
         </BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p2-review" checked={!!progress['p2-review']} onToggle={toggle} inline>
             پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
           </Task>
@@ -671,17 +671,17 @@ function Phase3Body({ account, progress, toggle, focusCommentId, focusNonce }: B
       <H3>روند ادامهٔ کار و ارزیابی فاز ۳</H3>
       <ul className="mt-2 space-y-1">
         <BULLET>دسترسی <L href="https://tryhackme.com">TryHackMe</L> از طرف کارشناس لایه سه ارسال خواهد شد.</BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p3-reports" checked={!!progress['p3-reports']} onToggle={toggle} inline>
             لطفاً در حین یادگیری، روی پروژه‌های واقعی نیز یوزکیس‌های آموزش‌داده‌شده بررسی شوند و موارد مشکوک مشاهده‌شده در پروژه‌ها در قالب یک گزارش کوتاه برای کارشناس لایه سه ارسال شود. این گزارش‌ها بخشی از مرحله ارزیابی این فاز به حساب می‌آیند.
           </Task>
         </BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p3-scenarios" checked={!!progress['p3-scenarios']} onToggle={toggle} inline>
             در این فاز چند سناریوی عملی نیز توسط کارشناس لایه سه ارسال خواهند شد. این سناریوها بایستی در محیط آزمایشگاه پیاده‌سازی شده و نتیجه آن در قالب گزارش به کارشناس لایه سه ارسال گردد. این گزارش بخشی از مرحله ارزیابی این فاز به حساب می‌آید.
           </Task>
         </BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p3-review" checked={!!progress['p3-review']} onToggle={toggle} inline>
             پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.
           </Task>
@@ -705,12 +705,12 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
     <section className={WRAP}>
       <H3>شرح فرآیندها و آموزش‌ها</H3>
       <ul className="space-y-1">
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p4-training" checked={!!progress['p4-training']} onToggle={toggle} inline>
             در این فاز روندها و فرآیندهای تکمیلی و سیاست‌های رصد و پایش مختص پروژه‌های رینگ توسط کارشناس لایه دو و مدیر سرویس رینگ مربوطه آموزش داده خواهد شد.
           </Task>
         </BULLET>
-        <BULLET>
+        <BULLET marker={false}>
           <Task k="p4-access" checked={!!progress['p4-access']} onToggle={toggle} inline>
             در این فاز دسترسی پروژه‌های رینگ از طرف کارشناس لایه دو و مدیر سرویس ارسال خواهد شد.
           </Task>
@@ -724,39 +724,24 @@ function Phase4Body({ account, progress, toggle, focusCommentId, focusNonce }: B
       <H3>روند ارزیابی و OKRهای فاز ۴</H3>
       <ol className="mt-2 flex list-decimal flex-col gap-1 ps-5 pe-1 text-sm">
         <li>
-          <span className="flex items-start gap-2.5 leading-8">
-            <span className="mt-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>
-              <Task k="p4-shift" checked={!!progress['p4-shift']} onToggle={toggle} inline>
-                <strong>OKR 1:</strong> رصد و پایش هر پروژه حداقل به اندازه یک شیفت اداری
-              </Task>
-            </span>
-          </span>
+          <Task k="p4-shift" checked={!!progress['p4-shift']} onToggle={toggle} inline>
+            <strong>OKR 1:</strong> رصد و پایش هر پروژه حداقل به اندازه یک شیفت اداری
+          </Task>
         </li>
         <li>
-          <span className="flex items-start gap-2.5 leading-8">
-            <span className="mt-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>
-              <Task k="p4-sec-event" checked={!!progress['p4-sec-event']} onToggle={toggle} inline>
-                <strong>OKR 2:</strong> ثبت یک تیکت Security Event به ازای هر پروژه در سامانه جیرا
-              </Task>
-            </span>
-          </span>
+          <Task k="p4-sec-event" checked={!!progress['p4-sec-event']} onToggle={toggle} inline>
+            <strong>OKR 2:</strong> ثبت یک تیکت Security Event به ازای هر پروژه در سامانه جیرا
+          </Task>
         </li>
         <li>
-          <span className="flex items-start gap-2.5 leading-8">
-            <span className="mt-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>
-              <Task
-                k="p4-fine-tuning"
-                checked={!!progress['p4-fine-tuning']}
-                onToggle={toggle}
-                inline
-              >
-                <strong>OKR 3:</strong> ثبت حداقل یک تیکت Fine Tuning به ازای هر فناوری SIEM (یک تیکت برای Elastic و یک تیکت برای Splunk) در سامانه جیرا
-              </Task>
-            </span>
-          </span>
+          <Task
+            k="p4-fine-tuning"
+            checked={!!progress['p4-fine-tuning']}
+            onToggle={toggle}
+            inline
+          >
+            <strong>OKR 3:</strong> ثبت حداقل یک تیکت Fine Tuning به ازای هر فناوری SIEM (یک تیکت برای Elastic و یک تیکت برای Splunk) در سامانه جیرا
+          </Task>
         </li>
       </ol>
 
