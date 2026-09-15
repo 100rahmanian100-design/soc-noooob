@@ -262,7 +262,7 @@ function HomeView({
           </div>
         </div>
         <p className="mt-3 text-sm leading-7 text-muted">
-          خلاصه دوره آزمایشی <strong className="text-text">(شهریور – مهر)</strong> و وضعیت کلی پیشرفت شما.
+          خلاصه دوره آزمایشی و وضعیت کلی پیشرفت شما.
           با ثبت وضعیت منابع هر فاز، نوار پیشرفت به‌صورت زنده به‌روزرسانی می‌شود.
         </p>
 
