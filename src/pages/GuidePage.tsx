@@ -6,8 +6,18 @@ import CommentSection from '../components/CommentSection';
 
 export type GuideView = 'home' | 'phase-1' | 'phase-2' | 'phase-3' | 'phase-4' | 'appendix';
 
-/** ریشه‌ی Share ویندوز؛ مسیرهای داخلی راهنما زیر همین Share قرار می‌گیرند. */
-const SHARE_ROOT = '\\\\sharefolder';
+/** مسیرهای واقعی Share ویندوز که با کلیک در کلیپ‌بورد قرار می‌گیرند. */
+const SHARE_LINKS = {
+  elasticCourse: '\\\\ShareFolder\\mssp\\Ring 2 - Roadmap\\1 - Elastic Security for SIEM',
+  elasticLogSemantics: '\\\\ShareFolder\\mssp\\Log Semantics\\Elastic',
+  splunkFundamentals1: '\\\\ShareFolder\\mssp\\0-11-Splunk\\1-splunk\\Splunk Fundamentals 1 - Mohammad Ghanbari',
+  splunkFundamentals2: '\\\\ShareFolder\\mssp\\0-11-Splunk\\1-splunk\\Splunk Fundamentals 2 - Mohammad Ghanbari',
+  splunkEs: '\\\\ShareFolder\\mssp\\0-11-Splunk\\5- Splunk-ES Basiri',
+  logSemantics: '\\\\ShareFolder\\mssp\\Log Semantics',
+  sec450Handout: '\\\\ShareFolder\\mssp\\450\\SEC450 - Blue Team Fundamentals Security Operations and Analysis',
+  sec450Lian: '\\\\ShareFolder\\mssp\\450',
+  sec450Ravin: '\\\\ShareFolder\\mssp\\1-4-SOC Teir 1',
+} as const;
 
 interface Props {
   account: PublicAccount;
@@ -32,7 +42,9 @@ function L({ href, children }: { href: string; children: React.ReactNode }) {
   }
 
   const copyShareLink = async () => {
-    const shareUrl = `${SHARE_ROOT}\\${href.replace(/^\/+/, '').replace(/\//g, '\\')}`;
+    const shareUrl = /^\\\\/.test(href)
+      ? href
+      : `\\\\ShareFolder\\${href.replace(/^\/+/, '').replace(/\//g, '\\')}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
     } catch {
@@ -524,8 +536,8 @@ function Phase1Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
               onMarkSeen={markRowsSeen}
               learn={
                 <div className="space-y-2">
-                  <div><L href="https://www.elastic.co/training/free">دوره آموزشی سایت Elastic</L></div>
-                  <div><L href="/courses/elastic-log-semantics-m1">ویدئوی شماره یک ماژول Elastic از ویدئوهای Log Semantics</L></div>
+                  <div><L href={SHARE_LINKS.elasticCourse}>دوره آموزشی سایت Elastic</L></div>
+                  <div><L href={SHARE_LINKS.elasticLogSemantics}>ویدئوی شماره یک ماژول Elastic از ویدئوهای Log Semantics</L></div>
                 </div>
               }
               practice={
@@ -542,9 +554,9 @@ function Phase1Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
               onMarkSeen={markRowsSeen}
               learn={
                 <div className="space-y-2">
-                  <div><L href="https://www.splunk.com/en_us/training/free-courses/splunk-fundamentals-1.html">دوره Splunk Fundamentals 1</L></div>
-                  <div><L href="/courses/splunk-fundamentals-2-m10">ماژول ۱۰ دوره Splunk Fundamentals 2</L></div>
-                  <div><L href="/courses/splunk-es-part1-2">ویدئوهای شماره ۱ و ۲ آموزش ES</L></div>
+                  <div><L href={SHARE_LINKS.splunkFundamentals1}>دوره Splunk Fundamentals 1</L></div>
+                  <div><L href={SHARE_LINKS.splunkFundamentals2}>ماژول ۱۰ دوره Splunk Fundamentals 2</L></div>
+                  <div><L href={SHARE_LINKS.splunkEs}>ویدئوهای شماره ۱ و ۲ آموزش ES</L></div>
                 </div>
               }
               practice={
@@ -602,7 +614,7 @@ function Phase2Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
               learn={
                 <>
                   <div>مطابق با سرفصل ارائه شده SANS SEC 450 در پیوست ۱</div>
-                  <div><L href="/courses/log-semantics-network">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L></div>
+                  <div><L href={SHARE_LINKS.logSemantics}>ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L></div>
                 </>
               }
               practice={
@@ -621,7 +633,7 @@ function Phase2Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <L href="/courses/log-semantics-dns">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <L href={SHARE_LINKS.logSemantics}>ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                 </>
               }
               practice={<span className="text-muted">—</span>}
@@ -635,7 +647,7 @@ function Phase2Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <L href="/courses/log-semantics-web">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <L href={SHARE_LINKS.logSemantics}>ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                   <br />
                   <L href="/portal/soc-t1-d-foundations">مسیر Soc T1 D – Foundations در پرتال آموزشی</L>
                 </>
@@ -693,7 +705,7 @@ function Phase3Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
                   <br />
                   <L href="/tools/sysmon-guide">Sysmon</L>
                   <br />
-                  <L href="/courses/log-semantics-windows">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <L href={SHARE_LINKS.logSemantics}>ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                 </>
               }
               practice={
@@ -709,7 +721,7 @@ function Phase3Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <L href="/courses/log-semantics-linux">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
+                  <L href={SHARE_LINKS.logSemantics}>ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                 </>
               }
               practice={
@@ -721,7 +733,7 @@ function Phase3Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
               taskKeys={['p3-hidps-video']}
               progress={progress}
               onMarkSeen={markRowsSeen}
-              learn={<L href="/courses/log-semantics-hidps">ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>}
+              learn={<L href={SHARE_LINKS.logSemantics}>ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>}
               practice={<span className="text-muted">—</span>}
             />
           </tbody>
@@ -810,13 +822,13 @@ function AppendixView({ account, navigate }: { account: PublicAccount; navigate:
         </P>
         <ol className="mt-2 flex list-decimal flex-col gap-1 ps-5 pe-1 text-sm leading-8">
           <li>
-            <L href="/downloads/sec450/slides-and-notes.pdf">دانلود جزوه و اسلایدهای دوره</L>
+            <L href={SHARE_LINKS.sec450Handout}>دانلود جزوه و اسلایدهای دوره</L>
           </li>
           <li>
-            <L href="/downloads/sec450/lyan-videos">دانلود ویدئوهای دوره - موسسه لیان</L>
+            <L href={SHARE_LINKS.sec450Lian}>دانلود ویدئوهای دوره - موسسه لیان</L>
           </li>
           <li>
-            <L href="/downloads/sec450/ravin-videos">دانلود ویدئوهای دوره - موسسه راوین</L>
+            <L href={SHARE_LINKS.sec450Ravin}>دانلود ویدئوهای دوره - موسسه راوین</L>
           </li>
         </ol>
 
