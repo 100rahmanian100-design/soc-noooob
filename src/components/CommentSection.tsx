@@ -219,7 +219,7 @@ function ThreadPost({ c, reply = false }: { c: CommentItem; reply?: boolean }) {
         <span className="ms-auto text-[10px] text-muted">{fmtDate(c.createdAt)}</span>
       </header>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{c.text}</p>
-      {!reply && (
+      {!reply && c.authorRole === 'user' && (
         <p className="mt-2">
           {c.answered ? (
             <span className="rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[10px] font-semibold text-ok">
@@ -235,4 +235,3 @@ function ThreadPost({ c, reply = false }: { c: CommentItem; reply?: boolean }) {
     </article>
   );
 }
-

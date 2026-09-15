@@ -52,12 +52,18 @@ export const apiSetProgress = (progress: Record<string, boolean>) =>
 export const apiListComments = (phase: string) =>
   call<{ comments: import('./types').CommentItem[] }>('data', { action: 'comments:list', phase });
 
-export const apiPostComment = (phase: string, text: string, parentId: string | null = null) =>
+export const apiPostComment = (
+  phase: string,
+  text: string,
+  parentId: string | null = null,
+  targetUser?: string | null,
+) =>
   call<{ comment: import('./types').CommentItem }>('data', {
     action: 'comments:post',
     phase,
     text,
     parentId,
+    targetUser,
   });
 
 export const apiListUsers = () =>

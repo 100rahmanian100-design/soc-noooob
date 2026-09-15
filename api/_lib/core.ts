@@ -108,6 +108,8 @@ export interface Comment {
   authorRole: Role;
   /** ادمین مقصد (ادمین سازنده‌ی کاربر) — برای کاربر مقدار دارد */
   targetAdmin: string | null;
+  /** کاربر مقصد؛ برای پیام جدیدی که ادمین مستقیماً برای کاربر می‌فرستد */
+  targetUser?: string | null;
   parentId: string | null;
   text: string;
   createdAt: string;

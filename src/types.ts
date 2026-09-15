@@ -17,6 +17,7 @@ export interface CommentItem {
   author: string;
   authorRole: Role;
   targetAdmin: string | null;
+  targetUser?: string | null;
   parentId: string | null;
   text: string;
   createdAt: string;

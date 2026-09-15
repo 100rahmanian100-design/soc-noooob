@@ -347,15 +347,21 @@ async function visibleComments(account: Account, phase: string): Promise<Comment
   const inPhase = comments.filter((c) => c.phase === phase);
 
   if (account.role === 'user') {
-    // پیام‌های خود کاربر + پاسخ‌های ادمین به همان پیام‌ها
+    // پیام‌های خود کاربر + پیام‌های مستقیمی که ادمین برای او فرستاده
+    // + پاسخ‌های ادمین به هرکدام از این رشته‌ها
     const myRootIds = new Set(
       inPhase
-        .filter((c) => c.author === account.username && c.parentId === null)
+        .filter(
+          (c) =>
+            c.parentId === null &&
+            (c.author.toLowerCase() === account.username.toLowerCase() ||
+              c.targetUser?.toLowerCase() === account.username.toLowerCase()),
+        )
         .map((c) => c.id),
     );
     return inPhase.filter(
       (c) =>
-        (c.author === account.username && c.parentId === null) ||
+        (c.parentId === null && myRootIds.has(c.id)) ||
         (c.parentId !== null && myRootIds.has(c.parentId)),
     );
   }
@@ -409,9 +415,11 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         return err(400, 'متن پیام بیش از حد طولانی است (حداکثر ۴۰۰۰ نویسه).');
 
       const parentId = str(ctx.body.parentId) || null;
+      const targetUsername = str(ctx.body.targetUser);
       const file = await getComments();
 
       let targetAdmin: string | null = null;
+      let targetUser: string | null = null;
 
       if (parentId) {
         // پاسخ به یک پیام — فقط ادمین/سوپر ادمین روی پیام‌های قابل‌مشاهده خودش
@@ -427,7 +435,19 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         if (!account.createdBy) return err(400, 'ادمین مقصد برای این حساب یافت نشد.');
         targetAdmin = account.createdBy;
       } else {
-        return err(400, 'ادمین باید روی یک پیام مشخص پاسخ دهد.');
+        // ادمین می‌تواند حتی در فازی که کاربر هنوز پیامی ندارد، یک رشتهٔ جدید
+        // را برای همان کاربر آغاز کند.
+        if (!targetUsername) return err(400, 'کاربر مقصد پیام را انتخاب کنید.');
+        const accounts = await getAccounts();
+        const target = accounts.accounts.find(
+          (a) => a.username.toLowerCase() === targetUsername.toLowerCase(),
+        );
+        if (!target || target.role !== 'user' || !target.active)
+          return err(404, 'کاربر مقصد پیدا نشد.');
+        if (account.role === 'admin' && target.createdBy?.toLowerCase() !== account.username.toLowerCase())
+          return err(403, 'ادمین فقط می‌تواند برای کاربران خودش پیام بفرستد.');
+        targetUser = target.username;
+        targetAdmin = account.username;
       }
 
       const comment: Comment = {
@@ -436,6 +456,7 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         author: account.username,
         authorRole: account.role,
         targetAdmin,
+        targetUser,
         parentId,
         text,
         createdAt: new Date().toISOString(),
@@ -460,16 +481,23 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
             });
           }
         } else {
-          // سوال/گزارش جدید کاربر: اعلان فوری برای ادمین آنلاین (سازنده + سوپرادمین‌ها)
-          const recipients = await adminRecipientsForUser(account);
+          // سوال کاربر برای ادمین‌ها، یا پیام جدید ادمین برای کاربر مقصد
+          const recipients = account.role === 'user'
+            ? await adminRecipientsForUser(account)
+            : targetUser
+              ? [targetUser]
+              : [];
           for (const r of recipients) {
             await pushNotification({
               user: r,
-              kind: 'user-question',
+              kind: account.role === 'user' ? 'user-question' : 'admin-reply',
               phase,
               commentId: comment.id,
               actor: account.username,
-              text: `پیام جدید از «${account.username}» در ${phaseLabel(phase)}`,
+              text:
+                account.role === 'user'
+                  ? `پیام جدید از «${account.username}» در ${phaseLabel(phase)}`
+                  : `پیام جدید از مدیر در ${phaseLabel(phase)}`,
             });
           }
         }
@@ -731,7 +759,10 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       let thread: Comment[] = [];
       if (target.role === 'user') {
         const roots = comments.filter(
-          (c) => c.author.toLowerCase() === target.username.toLowerCase() && c.parentId === null,
+          (c) =>
+            c.parentId === null &&
+            (c.author.toLowerCase() === target.username.toLowerCase() ||
+              c.targetUser?.toLowerCase() === target.username.toLowerCase()),
         );
         const rootIds = new Set(roots.map((c) => c.id));
         thread = comments

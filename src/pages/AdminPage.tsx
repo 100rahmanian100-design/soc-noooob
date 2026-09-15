@@ -641,8 +641,10 @@ function CommentInbox({ account }: { account: PublicAccount }) {
   const [selectedPhase, setSelectedPhase] = useState<string | null>(null);
   const [phaseComments, setPhaseComments] = useState<CommentItem[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [newMessageDraft, setNewMessageDraft] = useState('');
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [newMessageBusy, setNewMessageBusy] = useState(false);
 
   const userKey = (username: string) => username.toLowerCase();
   const phaseUserKey = (username: string, phase: string) => `${userKey(username)}|${phase}`;
@@ -662,10 +664,12 @@ function CommentInbox({ account }: { account: PublicAccount }) {
       const grouped: Record<string, Record<string, CommentItem[]>> = {};
       ALL_PHASES.forEach(([phase], index) => {
         for (const comment of phaseResponses[index]?.comments ?? []) {
-          if (comment.parentId !== null || comment.authorRole !== 'user') continue;
-          const author = userKey(comment.author);
-          (grouped[author] ??= {})[phase] ??= [];
-          grouped[author][phase].push(comment);
+          if (comment.parentId !== null) continue;
+          const username = comment.authorRole === 'user' ? comment.author : comment.targetUser;
+          if (!username) continue;
+          const user = userKey(username);
+          (grouped[user] ??= {})[phase] ??= [];
+          grouped[user][phase].push(comment);
         }
       });
       setMessagesByUser(grouped);
@@ -700,6 +704,7 @@ function CommentInbox({ account }: { account: PublicAccount }) {
 
   useEffect(() => {
     setPhaseComments([]);
+    setNewMessageDraft('');
     if (!selectedPhase) {
       return;
     }
@@ -730,17 +735,21 @@ function CommentInbox({ account }: { account: PublicAccount }) {
   const userUnread = (username: string) =>
     ALL_PHASES.reduce((sum, [phase]) => sum + phaseUnread(username, phase), 0);
 
-  const selectedUserPhases = selectedUser
-    ? ALL_PHASES.filter(([phase]) => phaseCount(selectedUser, phase) > 0)
-    : [];
+  // همهٔ فازها باید قابل انتخاب باشند؛ نبودن پیام قبلی نباید دسترسی ادمین
+  // برای آغاز گفت‌وگو با کاربر را محدود کند.
+  const selectedUserPhases = selectedUser ? ALL_PHASES : [];
 
   const selectedRoots = useMemo(() => {
     if (!selectedUser || !selectedPhase) return [];
     const username = userKey(selectedUser);
     return phaseComments.filter(
-      (comment) => comment.parentId === null && comment.author.toLowerCase() === username,
+      (comment) =>
+        comment.parentId === null &&
+        (comment.author.toLowerCase() === username ||
+          (comment.author.toLowerCase() === account.username.toLowerCase() &&
+            comment.targetUser?.toLowerCase() === username)),
     );
-  }, [phaseComments, selectedPhase, selectedUser]);
+  }, [account.username, phaseComments, selectedPhase, selectedUser]);
 
   const repliesOf = (rootId: string) =>
     phaseComments.filter((comment) => comment.parentId === rootId);
@@ -759,6 +768,25 @@ function CommentInbox({ account }: { account: PublicAccount }) {
     }
     setDrafts((current) => ({ ...current, [parentId]: '' }));
     await load();
+    window.dispatchEvent(new Event('notifications-updated'));
+  };
+
+  const sendNewMessage = async () => {
+    if (!selectedUser || !selectedPhase) return;
+    const draft = newMessageDraft.trim();
+    if (!draft) return;
+    setNewMessageBusy(true);
+    setError('');
+    const res = await apiPostComment(selectedPhase, draft, null, selectedUser);
+    setNewMessageBusy(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    setNewMessageDraft('');
+    await load();
+    const refreshed = await apiListComments(selectedPhase);
+    setPhaseComments(refreshed.comments ?? []);
     window.dispatchEvent(new Event('notifications-updated'));
   };
 
@@ -785,7 +813,7 @@ function CommentInbox({ account }: { account: PublicAccount }) {
           <div className="min-w-0">
             <h3 className="inbox-step-title">۱. انتخاب کاربر</h3>
             {inboxUsers.length === 0 ? (
-              <p className="empty">کاربری با پیام پیدا نشد.</p>
+              <p className="empty">کاربر فعالی برای انتخاب پیدا نشد.</p>
             ) : (
               <ul className="space-y-2">
                 {[...inboxUsers]
@@ -829,8 +857,6 @@ function CommentInbox({ account }: { account: PublicAccount }) {
             <h3 className="inbox-step-title">۲. انتخاب فاز</h3>
             {!selectedUser ? (
               <p className="empty">ابتدا یک کاربر انتخاب کنید.</p>
-            ) : selectedUserPhases.length === 0 ? (
-              <p className="empty">این کاربر هنوز پیامی ثبت نکرده است.</p>
             ) : (
               <ul className="space-y-2">
                 {selectedUserPhases.map(([phase, label]) => {
@@ -861,10 +887,32 @@ function CommentInbox({ account }: { account: PublicAccount }) {
             <h3 className="inbox-step-title">۳. پیام‌ها و پاسخ</h3>
             {!selectedUser || !selectedPhase ? (
               <p className="empty">کاربر و فاز را انتخاب کنید تا پیام‌ها نمایش داده شود.</p>
-            ) : selectedRoots.length === 0 ? (
-              <p className="empty">پیامی در این فاز نیست.</p>
             ) : (
-              <ul className="space-y-3">
+              <>
+                <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-3">
+                  <p className="mb-2 text-xs font-bold text-accent">ارسال پیام جدید برای {selectedUser}</p>
+                  <textarea
+                    dir="auto"
+                    value={newMessageDraft}
+                    onChange={(event) => setNewMessageDraft(event.target.value)}
+                    rows={3}
+                    maxLength={4000}
+                    placeholder="پیام خود را برای این کاربر در این فاز بنویسید…"
+                    className="field min-w-0 resize-y text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void sendNewMessage()}
+                    disabled={newMessageBusy || !newMessageDraft.trim()}
+                    className="mt-2 rounded-lg border border-accent bg-accent/10 px-4 py-1.5 text-xs font-bold text-accent transition hover:bg-accent hover:text-ink disabled:opacity-50"
+                  >
+                    {newMessageBusy ? 'در حال ارسال…' : 'ارسال پیام جدید'}
+                  </button>
+                </div>
+                {selectedRoots.length === 0 ? (
+                  <p className="empty">هنوز پیامی در این فاز نیست؛ می‌توانید اولین پیام را ارسال کنید.</p>
+                ) : (
+                <ul className="space-y-3">
                 {selectedRoots.map((root) => (
                   <li
                     key={root.id}
@@ -909,7 +957,9 @@ function CommentInbox({ account }: { account: PublicAccount }) {
                     </div>
                   </li>
                 ))}
-              </ul>
+                </ul>
+                )}
+              </>
             )}
           </div>
         </div>
