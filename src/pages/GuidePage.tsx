@@ -15,12 +15,49 @@ interface Props {
   focusNonce?: number;
 }
 
-/** لینک خارجی — با متن‌های مشخص‌شده در دوره، در برگه جدید */
+/** لینک اینترنتی را باز می‌کند و لینک Share داخلی را برای کپی آماده می‌کند. */
 function L({ href, children }: { href: string; children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false);
+  const isExternal = /^https?:\/\//i.test(href);
+
+  if (isExternal) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="guide-link">
+        {children}
+      </a>
+    );
+  }
+
+  const copyShareLink = async () => {
+    const shareUrl = new URL(href, window.location.origin).href;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      const helper = document.createElement('textarea');
+      helper.value = shareUrl;
+      helper.setAttribute('readonly', '');
+      helper.style.position = 'fixed';
+      helper.style.opacity = '0';
+      document.body.appendChild(helper);
+      helper.select();
+      document.execCommand('copy');
+      helper.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 3200);
+  };
+
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="guide-link">
-      {children}
-    </a>
+    <>
+      <button type="button" className="guide-link share-link" onClick={() => void copyShareLink()} title="کپی لینک Share">
+        {children}
+      </button>
+      {copied && (
+        <span className="toast share-copy-toast" role="status" aria-live="polite">
+          لینک کپی شد؛ آن را در Run یا مرورگر وارد کنید.
+        </span>
+      )}
+    </>
   );
 }
 
