@@ -705,7 +705,7 @@ function Phase3Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
                 <>
                   مطابق با سرفصل ارائه شده در SANS SEC 450 در پیوست ۱
                   <br />
-                  <L href="/tools/sysmon-guide">Sysmon</L>
+                  <L href="https://tryhackme.com/room/sysmon">Sysmon</L>
                   <br />
                   <L href={SHARE_LINKS.logSemantics}>ویدئوی مربوطه در مجموعه Log Semantics برای هر دو SIEM</L>
                 </>
@@ -785,6 +785,9 @@ function Phase4Body({ account, focusCommentId, focusNonce }: BodyProps) {
         </li>
         <li>
           <strong>OKR 3:</strong> ثبت حداقل یک تیکت Fine Tuning به ازای هر فناوری SIEM (یک تیکت برای Elastic و یک تیکت برای Splunk) در سامانه جیرا
+        </li>
+        <li>
+          <strong>OKR 4:</strong> بررسی حداقل یک تیکت AI
         </li>
       </ol>
 
