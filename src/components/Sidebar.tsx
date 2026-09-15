@@ -18,6 +18,7 @@ const NAV_ITEMS: Array<{ id: Route; label: string; adminOnly?: boolean }> = [
   { id: 'phase-3', label: 'فاز ۳: آموزش Endpoint' },
   { id: 'phase-4', label: 'فاز ۴: Onboarding' },
   { id: 'appendix', label: 'پیوست ۱: مراجع SANS SEC450' },
+  { id: 'chat', label: 'گفت‌وگو' },
   { id: 'admin', label: 'پنل مدیریت', adminOnly: true },
 ];
 
@@ -29,7 +30,7 @@ const ROLE_FA: Record<string, string> = {
 
 export default function Sidebar({ view, account, isAdmin, navigate, open, onClose, onLogout }: Props) {
   const items = isAdmin
-    ? NAV_ITEMS.filter((it) => it.adminOnly)
+    ? NAV_ITEMS.filter((it) => it.adminOnly || it.id === 'chat')
     : NAV_ITEMS.filter((it) => !it.adminOnly);
 
   return (

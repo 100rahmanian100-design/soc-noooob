@@ -3,27 +3,31 @@ import { apiLogout, apiMe } from './api';
 import type { PublicAccount } from './types';
 import AuthPage from './pages/AuthPage';
 import GuidePage, { type GuideView } from './pages/GuidePage';
+import ChatPage from './pages/ChatPage';
 import AdminPage from './pages/AdminPage';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 
 /** مسیریابی hash — بدون وابستگی بیرونی */
-export type Route = 'auth' | 'admin' | GuideView;
+export type Route = 'auth' | 'admin' | 'chat' | GuideView;
 
-const VALID_VIEWS: Route[] = ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix', 'admin', 'auth'];
+const VALID_VIEWS: Route[] = ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix', 'admin', 'chat', 'auth'];
 
 /** پارس هش: #/phase-2?c=<commentId> */
-function parseHash(): { route: Route; focusCommentId: string | null } {
+function parseHash(): { route: Route; focusCommentId: string | null; chatUser: string | null } {
   let raw = window.location.hash.replace(/^#\/?/, '');
   let focusCommentId: string | null = null;
-  const m = raw.match(/^(.*)\?c=([0-9a-f]+)$/);
-  if (m) {
-    raw = m[1] ?? '';
-    focusCommentId = m[2] ?? null;
+  let chatUser: string | null = null;
+  const queryIndex = raw.indexOf('?');
+  if (queryIndex >= 0) {
+    const query = new URLSearchParams(raw.slice(queryIndex + 1));
+    raw = raw.slice(0, queryIndex);
+    focusCommentId = query.get('c');
+    chatUser = query.get('u');
   }
   const base = raw || 'home';
   const route: Route = (VALID_VIEWS as string[]).includes(base) ? (base as Route) : 'home';
-  return { route, focusCommentId };
+  return { route, focusCommentId, chatUser };
 }
 
 export default function App() {
@@ -31,12 +35,14 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [route, setRoute] = useState<Route>(parseHash().route);
   const [focus, setFocus] = useState<{ commentId: string; nonce: number } | null>(null);
+  const [chatUser, setChatUser] = useState<string | null>(parseHash().chatUser);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const onHash = () => {
       const p = parseHash();
       setRoute(p.route);
+      setChatUser(p.chatUser);
       if (p.focusCommentId) {
         setFocus((f) => ({ commentId: p.focusCommentId!, nonce: (f?.nonce ?? 0) + 1 }));
       } else {
@@ -67,6 +73,13 @@ export default function App() {
     window.location.hash = `#/${phase}?c=${commentId}`;
     setRoute(phase);
     setFocus((f) => ({ commentId, nonce: (f?.nonce ?? 0) + 1 }));
+  }, []);
+
+  const openChat = useCallback((username: string) => {
+    window.location.hash = `#/chat?u=${encodeURIComponent(username)}`;
+    setRoute('chat');
+    setChatUser(username);
+    setFocus(null);
   }, []);
 
   const onLogout = useCallback(async () => {
@@ -101,8 +114,15 @@ export default function App() {
   }
 
   // ادمین و سوپرادمین فقط پنل مدیریت را می‌بینند؛ حتی با ورود مستقیم به لینک فاز.
-  const effectiveRoute: Route = isAdmin ? 'admin' : route === 'admin' ? 'home' : route;
-  const showAdmin = isAdmin;
+  const effectiveRoute: Route = isAdmin
+    ? route === 'chat'
+      ? 'chat'
+      : 'admin'
+    : route === 'admin'
+      ? 'home'
+      : route;
+  const showAdmin = effectiveRoute === 'admin' && isAdmin;
+  const showChat = effectiveRoute === 'chat';
   const guideView: GuideView = (effectiveRoute as GuideView) ?? 'home';
 
   return (
@@ -125,12 +145,15 @@ export default function App() {
           onToggleMenu={() => setMenuOpen((o) => !o)}
           onLogout={() => void onLogout()}
           onOpenComment={openComment}
+          onOpenChat={openChat}
         />
 
         <main className="content">
           <div key={effectiveRoute} className="view-enter fade">
             {showAdmin ? (
               <AdminPage account={account} />
+            ) : showChat ? (
+              <ChatPage account={account} focusUser={chatUser} />
             ) : (
               <GuidePage
                 account={account}

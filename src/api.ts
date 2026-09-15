@@ -89,3 +89,19 @@ export const apiListNotifications = () =>
 
 export const apiMarkNotifications = (ids: string[] = [], all = false) =>
   call<{ marked: number }>('data', { action: 'notifications:markRead', ids, all });
+
+export const apiChatContacts = () =>
+  call<{ contacts: import('./types').ChatContact[] }>('data', { action: 'chat:contacts' });
+
+export const apiChatMessages = (targetUsername: string) =>
+  call<{ contact: import('./types').PublicAccount; messages: import('./types').ChatMessage[] }>('data', {
+    action: 'chat:messages',
+    targetUsername,
+  });
+
+export const apiChatSend = (targetUsername: string, text: string) =>
+  call<{ message: import('./types').ChatMessage }>('data', {
+    action: 'chat:send',
+    targetUsername,
+    text,
+  });

@@ -123,7 +123,7 @@ export interface AppNotification {
   id: string;
   /** نام کاربری گیرنده اعلان */
   user: string;
-  kind: 'user-question' | 'admin-reply';
+  kind: 'user-question' | 'admin-reply' | 'chat-message';
   /** فازی که رویداد در آن رخ داده (phase-1..phase-4) */
   phase: string;
   /** شناسه کامنت مرتبط (برای deep-link و highlight) */
@@ -137,6 +137,20 @@ export interface AppNotification {
 
 export interface NotificationsFile {
   notifications: AppNotification[];
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  senderRole: Role;
+  recipient: string;
+  text: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface ChatFile {
+  messages: ChatMessage[];
 }
 
 // ---------------------------------------------------------------------------
@@ -210,6 +224,7 @@ const blobKeys = {
   accounts: 'accounts.json.enc',
   comments: 'comments.json.enc',
   notifications: 'notifications.json.enc',
+  chat: 'chat.json.enc',
   userData: (u: string) => `user-data/${encodeURIComponent(u)}.json.enc`,
 };
 
@@ -332,6 +347,15 @@ export async function getNotifications(): Promise<NotificationsFile> {
 
 export async function saveNotifications(file: NotificationsFile): Promise<void> {
   await writeJSON(blobKeys.notifications, file);
+}
+
+export async function getChat(): Promise<ChatFile> {
+  const data = await readJSON<ChatFile>(blobKeys.chat);
+  return data ?? { messages: [] };
+}
+
+export async function saveChat(file: ChatFile): Promise<void> {
+  await writeJSON(blobKeys.chat, file);
 }
 
 export function newId(): string {

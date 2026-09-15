@@ -10,6 +10,7 @@ interface Props {
   onLogout: () => void;
   /** برای deep-link و پرش به فاز + پیام مربوطه */
   onOpenComment: (phase: Route, commentId: string) => void;
+  onOpenChat: (username: string) => void;
 }
 
 const VIEW_TITLES: Record<string, string> = {
@@ -20,6 +21,7 @@ const VIEW_TITLES: Record<string, string> = {
   'phase-4': 'فاز ۴: Onboarding',
   appendix: 'پیوست ۱: مراجع SANS SEC450',
   admin: 'پنل مدیریت',
+  chat: 'گفت‌وگو',
 };
 
 function fmtRelative(iso: string): string {
@@ -36,7 +38,7 @@ function fmtRelative(iso: string): string {
   }
 }
 
-export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment }: Props) {
+export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment, onOpenChat }: Props) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -91,7 +93,8 @@ export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenCo
 
   const openNotification = (n: AppNotification) => {
     setOpen(false);
-    onOpenComment(n.phase as Route, n.commentId);
+    if (n.kind === 'chat-message') onOpenChat(n.actor);
+    else onOpenComment(n.phase as Route, n.commentId);
   };
 
   const isAdmin = account.role === 'admin' || account.role === 'superadmin';
@@ -181,7 +184,7 @@ export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenCo
                       }}
                     >
                       <span className="row small" style={{ gap: 8, flexWrap: 'wrap' }}>
-                        <span>{n.kind === 'user-question' ? '💬' : '✅'}</span>
+                        <span>{n.kind === 'admin-reply' ? '✅' : '💬'}</span>
                         <span style={{ fontWeight: 700 }}>{n.text}</span>
                         {!n.read && (
                           <span className="pill" style={{ color: 'var(--ink)', background: 'var(--accent)', borderColor: 'transparent' }}>

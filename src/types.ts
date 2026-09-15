@@ -26,7 +26,7 @@ export interface CommentItem {
 export interface AppNotification {
   id: string;
   user: string;
-  kind: 'user-question' | 'admin-reply';
+  kind: 'user-question' | 'admin-reply' | 'chat-message';
   phase: string;
   commentId: string;
   actor: string;
@@ -34,6 +34,21 @@ export interface AppNotification {
   createdAt: string;
   read: boolean;
 }
+
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  senderRole: Role;
+  recipient: string;
+  text: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export type ChatContact = PublicAccount & {
+  unreadCount: number;
+  lastMessageAt: string | null;
+};
 
 export interface PhaseSummary {
   done: number;

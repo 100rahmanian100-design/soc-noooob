@@ -6,6 +6,7 @@
 import {
   type Account,
   type AppNotification,
+  type ChatMessage,
   type Comment,
   type Role,
   INVITE_CODE,
@@ -14,6 +15,7 @@ import {
   findAccount,
   getAccounts,
   getComments,
+  getChat,
   getNotifications,
   getUserData,
   hashPassword,
@@ -21,6 +23,7 @@ import {
   readSession,
   saveAccounts,
   saveComments,
+  saveChat,
   saveNotifications,
   saveUserData,
   signSession,
@@ -167,6 +170,58 @@ async function currentAccount(ctx: ApiCtx): Promise<Account | null> {
   const account = await findAccount(username);
   if (!account || !account.active) return null;
   return account;
+}
+
+function chatPairKey(first: string, second: string): string {
+  return [first.toLowerCase(), second.toLowerCase()].sort().join('|');
+}
+
+async function chatTargetFor(account: Account, targetUsername: string): Promise<Account | null> {
+  const { accounts } = await getAccounts();
+  const target = accounts.find((a) => a.username.toLowerCase() === targetUsername.toLowerCase());
+  if (!target || !target.active || target.username.toLowerCase() === account.username.toLowerCase()) return null;
+
+  if (account.role === 'superadmin') return target.role === 'user' ? target : null;
+  if (account.role === 'admin') {
+    return target.role === 'user' && target.createdBy?.toLowerCase() === account.username.toLowerCase()
+      ? target
+      : null;
+  }
+  return target.role === 'admin' || target.role === 'superadmin'
+    ? account.createdBy?.toLowerCase() === target.username.toLowerCase()
+      ? target
+      : null
+    : null;
+}
+
+async function chatContactsFor(account: Account) {
+  const { accounts } = await getAccounts();
+  let targets: Account[];
+  if (account.role === 'user') {
+    targets = accounts.filter(
+      (a) =>
+        a.active &&
+        (a.role === 'admin' || a.role === 'superadmin') &&
+        a.username.toLowerCase() === account.createdBy?.toLowerCase(),
+    );
+  } else if (account.role === 'admin') {
+    targets = accounts.filter(
+      (a) => a.active && a.role === 'user' && a.createdBy?.toLowerCase() === account.username.toLowerCase(),
+    );
+  } else {
+    targets = accounts.filter((a) => a.active && a.role === 'user');
+  }
+
+  const chat = await getChat();
+  return targets.map((target) => {
+    const messages = chat.messages.filter((message) => chatPairKey(message.sender, message.recipient) === chatPairKey(account.username, target.username));
+    const last = messages[messages.length - 1];
+    return {
+      ...publicAccount(target),
+      unreadCount: messages.filter((message) => message.recipient.toLowerCase() === account.username.toLowerCase() && !message.read).length,
+      lastMessageAt: last?.createdAt ?? null,
+    };
+  }).sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') || a.username.localeCompare(b.username));
 }
 
 export function sessionCookie(value: string): ApiResult['setCookie'] {
@@ -460,6 +515,85 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       }
       if (changed > 0) await saveNotifications(file);
       return ok({ marked: changed });
+    }
+
+    // ---------------- گفت‌وگوی مستقیم کاربر و ادمین ----------------
+    case 'chat:contacts': {
+      return ok({ contacts: await chatContactsFor(account) });
+    }
+
+    case 'chat:messages': {
+      const targetUsername = str(ctx.body.targetUsername);
+      const target = await chatTargetFor(account, targetUsername);
+      if (!target) return err(403, 'این گفت‌وگو برای حساب شما مجاز نیست.');
+
+      const file = await getChat();
+      const pair = chatPairKey(account.username, target.username);
+      let changed = false;
+      for (const message of file.messages) {
+        if (
+          chatPairKey(message.sender, message.recipient) === pair &&
+          message.recipient.toLowerCase() === account.username.toLowerCase() &&
+          !message.read
+        ) {
+          message.read = true;
+          changed = true;
+        }
+      }
+      if (changed) await saveChat(file);
+
+      const notifications = await getNotifications();
+      let notificationsChanged = false;
+      for (const notification of notifications.notifications) {
+        if (
+          notification.user.toLowerCase() === account.username.toLowerCase() &&
+          notification.kind === 'chat-message' &&
+          notification.actor.toLowerCase() === target.username.toLowerCase() &&
+          !notification.read
+        ) {
+          notification.read = true;
+          notificationsChanged = true;
+        }
+      }
+      if (notificationsChanged) await saveNotifications(notifications);
+
+      const messages = file.messages
+        .filter((message) => chatPairKey(message.sender, message.recipient) === pair)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return ok({ contact: publicAccount(target), messages });
+    }
+
+    case 'chat:send': {
+      const targetUsername = str(ctx.body.targetUsername);
+      const text = str(ctx.body.text);
+      const target = await chatTargetFor(account, targetUsername);
+      if (!target) return err(403, 'این گفت‌وگو برای حساب شما مجاز نیست.');
+      if (!text) return err(400, 'متن پیام نمی‌تواند خالی باشد.');
+      if (text.length > 4000) return err(400, 'متن پیام نباید بیشتر از ۴۰۰۰ نویسه باشد.');
+
+      const message: ChatMessage = {
+        id: newId(),
+        sender: account.username,
+        senderRole: account.role,
+        recipient: target.username,
+        text,
+        createdAt: new Date().toISOString(),
+        read: false,
+      };
+      const file = await getChat();
+      file.messages.push(message);
+      if (file.messages.length > 10000) file.messages = file.messages.slice(-10000);
+      await saveChat(file);
+
+      await pushNotification({
+        user: target.username,
+        kind: 'chat-message',
+        phase: 'chat',
+        commentId: message.id,
+        actor: account.username,
+        text: `پیام جدید از «${account.username}»`,
+      });
+      return ok({ message });
     }
 
     // ---------------- مدیریت حساب‌ها (ادمین/سوپر ادمین) ----------------
