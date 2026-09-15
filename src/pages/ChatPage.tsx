@@ -223,6 +223,12 @@ export default function ChatPage({ account, focusUser }: Props) {
                   dir="auto"
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      event.currentTarget.form?.requestSubmit();
+                    }
+                  }}
                   rows={2}
                   maxLength={4000}
                   placeholder="پیام خود را بنویسید…"
