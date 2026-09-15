@@ -6,6 +6,9 @@ import CommentSection from '../components/CommentSection';
 
 export type GuideView = 'home' | 'phase-1' | 'phase-2' | 'phase-3' | 'phase-4' | 'appendix';
 
+/** ریشه‌ی Share ویندوز؛ مسیرهای داخلی راهنما زیر همین Share قرار می‌گیرند. */
+const SHARE_ROOT = '\\\\sharefolder';
+
 interface Props {
   account: PublicAccount;
   view: GuideView;
@@ -29,7 +32,7 @@ function L({ href, children }: { href: string; children: React.ReactNode }) {
   }
 
   const copyShareLink = async () => {
-    const shareUrl = new URL(href, window.location.origin).href;
+    const shareUrl = `${SHARE_ROOT}\\${href.replace(/^\/+/, '').replace(/\//g, '\\')}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
     } catch {
