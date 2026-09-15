@@ -77,8 +77,7 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
     [comments],
   );
 
-  const postRoot = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const postRoot = async () => {
     if (!text.trim()) return;
     setError('');
     const res = await apiPostComment(phase, text.trim());
@@ -120,10 +119,22 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
       </p>
       {/* فرم ارسال پیام (کاربر) */}
       {account.role === 'user' && (
-        <form onSubmit={postRoot} className="mt-4">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void postRoot();
+          }}
+          className="mt-4"
+        >
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                void postRoot();
+              }
+            }}
             rows={3}
             maxLength={4000}
             placeholder="سؤال یا نظر خود را درباره این فاز بنویسید…"
@@ -172,8 +183,9 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
                   </ul>
                 )}
 
-                {/* جعبه پاسخ ادمین */}
-                {isAdmin && (
+                {/* جعبه پاسخ: کاربر به پیام مدیر، ادمین به پیام کاربر */}
+                {((account.role === 'user' && root.authorRole !== 'user') ||
+                  (isAdmin && root.authorRole === 'user')) && (
                   <div className="mt-3 ms-6">
                     <textarea
                       dir="auto"
@@ -181,6 +193,12 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
                       onChange={(e) =>
                         setReplyDrafts((d) => ({ ...d, [root.id]: e.target.value }))
                       }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                          event.preventDefault();
+                          void postReply(root.id);
+                        }
+                      }}
                       rows={2}
                       maxLength={4000}
                       placeholder="پاسخ به این پیام…"

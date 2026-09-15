@@ -420,16 +420,29 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
 
       let targetAdmin: string | null = null;
       let targetUser: string | null = null;
+      let parent: Comment | undefined;
 
       if (parentId) {
-        // پاسخ به یک پیام — فقط ادمین/سوپر ادمین روی پیام‌های قابل‌مشاهده خودش
-        if (account.role === 'user')
-          return err(403, 'کاربر عادی اجازه پاسخ به پیام دیگران را ندارد.');
-        const parent = file.comments.find((c) => c.id === parentId && c.phase === phase);
-        if (!parent || !adminCanSeeComment(parent, account))
-          return err(404, 'پیام اصلی پیدا نشد.');
+        parent = file.comments.find((c) => c.id === parentId && c.phase === phase);
+        if (!parent) return err(404, 'پیام اصلی پیدا نشد.');
+
+        if (account.role === 'user') {
+          // کاربر فقط می‌تواند به پیام مستقیمی که ادمین برای خودش فرستاده
+          // پاسخ بدهد؛ پاسخ در همان رشتهٔ کامنت ذخیره می‌شود.
+          const isDirectMessageForUser =
+            parent.parentId === null &&
+            parent.authorRole !== 'user' &&
+            parent.targetUser?.toLowerCase() === account.username.toLowerCase();
+          if (!isDirectMessageForUser)
+            return err(403, 'فقط می‌توانید به پیام مدیر برای خودتان پاسخ دهید.');
+          targetAdmin = parent.targetAdmin ?? account.createdBy;
+        } else {
+          // پاسخ ادمین/سوپر ادمین فقط روی پیام‌های قابل‌مشاهدهٔ خودش
+          if (!adminCanSeeComment(parent, account))
+            return err(404, 'پیام اصلی پیدا نشد.');
+          targetAdmin = parent.targetAdmin ?? null;
+        }
         parent.answered = true;
-        targetAdmin = parent.targetAdmin ?? null;
       } else if (account.role === 'user') {
         // پیام کاربر به ادمینِ سازنده‌ی خودش ارسال می‌شود
         if (!account.createdBy) return err(400, 'ادمین مقصد برای این حساب یافت نشد.');
@@ -468,16 +481,17 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       // ---- اعلان هوشمند ----
       try {
         if (parentId) {
-          // پاسخ ادمین به کاربر: اعلان برای نویسنده پیام اصلی
-          const parent = file.comments.find((c) => c.id === parentId);
           if (parent && parent.author.toLowerCase() !== account.username.toLowerCase()) {
             await pushNotification({
               user: parent.author,
-              kind: 'admin-reply',
+              kind: account.role === 'user' ? 'user-question' : 'admin-reply',
               phase,
               commentId: comment.id,
               actor: account.username,
-              text: `پاسخ جدید از مدیر در ${phaseLabel(phase)}`,
+              text:
+                account.role === 'user'
+                  ? `پاسخ جدید از «${account.username}» در ${phaseLabel(phase)}`
+                  : `پاسخ جدید از مدیر در ${phaseLabel(phase)}`,
             });
           }
         } else {

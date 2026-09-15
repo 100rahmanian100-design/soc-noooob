@@ -895,6 +895,12 @@ function CommentInbox({ account }: { account: PublicAccount }) {
                     dir="auto"
                     value={newMessageDraft}
                     onChange={(event) => setNewMessageDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        void sendNewMessage();
+                      }
+                    }}
                     rows={3}
                     maxLength={4000}
                     placeholder="پیام خود را برای این کاربر در این فاز بنویسید…"
@@ -941,6 +947,12 @@ function CommentInbox({ account }: { account: PublicAccount }) {
                         dir="auto"
                         value={drafts[root.id] ?? ''}
                         onChange={(event) => setDrafts((current) => ({ ...current, [root.id]: event.target.value }))}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                            event.preventDefault();
+                            void reply(root.id);
+                          }
+                        }}
                         rows={2}
                         maxLength={4000}
                         placeholder="پاسخ به این پیام…"
