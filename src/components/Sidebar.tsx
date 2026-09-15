@@ -5,6 +5,7 @@ interface Props {
   view: Route;
   account: PublicAccount;
   isAdmin: boolean;
+  chatUnread: number;
   navigate: (r: Route) => void;
   open: boolean;
   onClose: () => void;
@@ -28,7 +29,7 @@ const ROLE_FA: Record<string, string> = {
   user: 'کاربر',
 };
 
-export default function Sidebar({ view, account, isAdmin, navigate, open, onClose, onLogout }: Props) {
+export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout }: Props) {
   const items = isAdmin
     ? NAV_ITEMS.filter((it) => it.adminOnly || it.id === 'chat')
     : NAV_ITEMS.filter((it) => !it.adminOnly);
@@ -56,7 +57,8 @@ export default function Sidebar({ view, account, isAdmin, navigate, open, onClos
             }}
           >
             <span>{it.label}</span>
-            {view === it.id && <span className="dot nav-num" aria-hidden="true" />}
+            {it.id === 'chat' && chatUnread > 0 && <span className="dot nav-unread-dot" aria-label="پیام خوانده‌نشده" />}
+            {view === it.id && !(it.id === 'chat' && chatUnread > 0) && <span className="dot nav-num" aria-hidden="true" />}
           </button>
         ))}
       </nav>

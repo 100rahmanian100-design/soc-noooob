@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiLogout, apiMe } from './api';
+import { apiListNotifications, apiLogout, apiMe } from './api';
 import type { PublicAccount } from './types';
 import AuthPage from './pages/AuthPage';
 import GuidePage, { type GuideView } from './pages/GuidePage';
@@ -36,6 +36,7 @@ export default function App() {
   const [route, setRoute] = useState<Route>(parseHash().route);
   const [focus, setFocus] = useState<{ commentId: string; nonce: number } | null>(null);
   const [chatUser, setChatUser] = useState<string | null>(parseHash().chatUser);
+  const [chatUnread, setChatUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -61,6 +62,25 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!account) {
+      setChatUnread(0);
+      return;
+    }
+    const loadChatUnread = async () => {
+      const res = await apiListNotifications();
+      setChatUnread((res.notifications ?? []).filter((n) => n.kind === 'chat-message' && !n.read).length);
+    };
+    void loadChatUnread();
+    const refresh = () => void loadChatUnread();
+    window.addEventListener('notifications-updated', refresh);
+    const timer = window.setInterval(() => void loadChatUnread(), 20_000);
+    return () => {
+      window.removeEventListener('notifications-updated', refresh);
+      window.clearInterval(timer);
+    };
+  }, [account]);
+
   const navigate = useCallback((r: Route) => {
     if (parseHash().route === r && r !== 'auth') return;
     window.location.hash = `#/${r}`;
@@ -85,6 +105,7 @@ export default function App() {
   const onLogout = useCallback(async () => {
     await apiLogout();
     setAccount(null);
+    setChatUnread(0);
     window.location.hash = '#/auth';
     setRoute('auth');
   }, []);
@@ -131,6 +152,7 @@ export default function App() {
         view={effectiveRoute}
         account={account}
         isAdmin={isAdmin}
+        chatUnread={chatUnread}
         navigate={navigate}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
