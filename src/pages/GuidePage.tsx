@@ -574,7 +574,9 @@ function Phase1Body({ account, progress, markRowsSeen, focusCommentId, focusNonc
       <ul className="mt-2 space-y-1">
         <BULLET>دسترسی <L href="https://tryhackme.com">TryHackMe</L> از طرف کارشناس لایه سه ارسال خواهد شد.</BULLET>
         <BULLET>با آغاز این فاز دسترسی به ۴ ماشین SIEM به‌صورت آزمایشی برقرار خواهد شد؛ لطفاً برای تمرین از این ماشین‌ها استفاده کنید.</BULLET>
-        <BULLET>دسترسی به Elastic و Splunk آزمایشگاه MSSP (<L href="/docs/mssp-lab-access-guide">راهنمای دسترسی</L>)</BULLET>
+        <BULLET>
+          دسترسی به Elastic و Splunk آزمایشگاه MSSP (<L href="https://confluence.apk-group.net/spaces/MP/pages/151094607/Yazd+MSSP+Lab">راهنمای دسترسی</L>)
+        </BULLET>
         <BULLET>دسترسی به یک پروژه Elastic و Splunk واقعی (توسط کارشناس لایه سه ارسال خواهد شد)</BULLET>
         <BULLET>پس از پایان این فاز یک جلسه ارزیابی با کارشناس لایه سه برگزار خواهد شد. این جلسه شامل بررسی نظری و عملی مطالب تدریس‌شده می‌باشد.</BULLET>
       </ul>
