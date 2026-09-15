@@ -640,11 +640,10 @@ function CommentInbox({ account }: { account: PublicAccount }) {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedPhase, setSelectedPhase] = useState<string | null>(null);
   const [phaseComments, setPhaseComments] = useState<CommentItem[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [newMessageDraft, setNewMessageDraft] = useState('');
+  const [composerDraft, setComposerDraft] = useState('');
+  const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [newMessageBusy, setNewMessageBusy] = useState(false);
+  const [composerBusy, setComposerBusy] = useState(false);
 
   const userKey = (username: string) => username.toLowerCase();
   const phaseUserKey = (username: string, phase: string) => `${userKey(username)}|${phase}`;
@@ -704,7 +703,8 @@ function CommentInbox({ account }: { account: PublicAccount }) {
 
   useEffect(() => {
     setPhaseComments([]);
-    setNewMessageDraft('');
+    setComposerDraft('');
+    setReplyTargetId(null);
     if (!selectedPhase) {
       return;
     }
@@ -746,44 +746,37 @@ function CommentInbox({ account }: { account: PublicAccount }) {
       (comment) =>
         comment.parentId === null &&
         (comment.author.toLowerCase() === username ||
-          (comment.author.toLowerCase() === account.username.toLowerCase() &&
-            comment.targetUser?.toLowerCase() === username)),
+          comment.targetUser?.toLowerCase() === username),
     );
-  }, [account.username, phaseComments, selectedPhase, selectedUser]);
+  }, [phaseComments, selectedPhase, selectedUser]);
 
   const repliesOf = (rootId: string) =>
     phaseComments.filter((comment) => comment.parentId === rootId);
 
-  const reply = async (parentId: string) => {
-    if (!selectedPhase) return;
-    const draft = (drafts[parentId] ?? '').trim();
-    if (!draft) return;
-    setBusyId(parentId);
-    setError('');
-    const res = await apiPostComment(selectedPhase, draft, parentId);
-    setBusyId(null);
-    if (res.error) {
-      setError(res.error);
-      return;
-    }
-    setDrafts((current) => ({ ...current, [parentId]: '' }));
-    await load();
-    window.dispatchEvent(new Event('notifications-updated'));
-  };
+  const replyTarget = useMemo(
+    () => selectedRoots.find((root) => root.id === replyTargetId) ?? null,
+    [replyTargetId, selectedRoots],
+  );
 
-  const sendNewMessage = async () => {
+  const sendComposer = async () => {
     if (!selectedUser || !selectedPhase) return;
-    const draft = newMessageDraft.trim();
+    const draft = composerDraft.trim();
     if (!draft) return;
-    setNewMessageBusy(true);
+    setComposerBusy(true);
     setError('');
-    const res = await apiPostComment(selectedPhase, draft, null, selectedUser);
-    setNewMessageBusy(false);
+    const res = await apiPostComment(
+      selectedPhase,
+      draft,
+      replyTarget?.id ?? null,
+      replyTarget ? null : selectedUser,
+    );
+    setComposerBusy(false);
     if (res.error) {
       setError(res.error);
       return;
     }
-    setNewMessageDraft('');
+    setComposerDraft('');
+    setReplyTargetId(null);
     await load();
     const refreshed = await apiListComments(selectedPhase);
     setPhaseComments(refreshed.comments ?? []);
@@ -890,29 +883,50 @@ function CommentInbox({ account }: { account: PublicAccount }) {
             ) : (
               <>
                 <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-3">
-                  <p className="mb-2 text-xs font-bold text-accent">ارسال پیام جدید برای {selectedUser}</p>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-bold text-accent">
+                      {replyTarget ? `پاسخ به ${replyTarget.author}` : `پیام جدید برای ${selectedUser}`}
+                    </p>
+                    {replyTarget && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyTargetId(null);
+                          setComposerDraft('');
+                        }}
+                        className="text-[11px] font-semibold text-muted underline-offset-2 hover:text-text hover:underline"
+                      >
+                        لغو پاسخ و ارسال پیام جدید
+                      </button>
+                    )}
+                  </div>
+                  {replyTarget && (
+                    <p className="mb-2 truncate rounded-md border border-line bg-bg/50 px-2 py-1 text-[11px] text-muted">
+                      «{replyTarget.text}»
+                    </p>
+                  )}
                   <textarea
                     dir="auto"
-                    value={newMessageDraft}
-                    onChange={(event) => setNewMessageDraft(event.target.value)}
+                    value={composerDraft}
+                    onChange={(event) => setComposerDraft(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                         event.preventDefault();
-                        void sendNewMessage();
+                        void sendComposer();
                       }
                     }}
                     rows={3}
                     maxLength={4000}
-                    placeholder="پیام خود را برای این کاربر در این فاز بنویسید…"
+                    placeholder={replyTarget ? 'پاسخ خود را بنویسید…' : 'پیام خود را برای این کاربر در این فاز بنویسید…'}
                     className="field min-w-0 resize-y text-xs"
                   />
                   <button
                     type="button"
-                    onClick={() => void sendNewMessage()}
-                    disabled={newMessageBusy || !newMessageDraft.trim()}
+                    onClick={() => void sendComposer()}
+                    disabled={composerBusy || !composerDraft.trim()}
                     className="mt-2 rounded-lg border border-accent bg-accent/10 px-4 py-1.5 text-xs font-bold text-accent transition hover:bg-accent hover:text-ink disabled:opacity-50"
                   >
-                    {newMessageBusy ? 'در حال ارسال…' : 'ارسال پیام جدید'}
+                    {composerBusy ? 'در حال ارسال…' : replyTarget ? 'ارسال پاسخ' : 'ارسال پیام'}
                   </button>
                 </div>
                 {selectedRoots.length === 0 ? (
@@ -930,6 +944,20 @@ function CommentInbox({ account }: { account: PublicAccount }) {
                       <span className="ms-auto text-[10px] text-muted">{fmtDateTime(root.createdAt)}</span>
                     </header>
                     <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6">{root.text}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReplyTargetId(root.id);
+                        setComposerDraft('');
+                      }}
+                      className={`mt-2 rounded-md px-2 py-1 text-[11px] font-semibold transition ${
+                        replyTargetId === root.id
+                          ? 'bg-accent/15 text-accent'
+                          : 'text-muted hover:bg-raised hover:text-text'
+                      }`}
+                    >
+                      {replyTargetId === root.id ? 'در حال پاسخ به این کامنت' : 'پاسخ به این کامنت'}
+                    </button>
 
                     {repliesOf(root.id).map((replyComment) => (
                       <article key={replyComment.id} className="inbox-reply">
@@ -942,31 +970,6 @@ function CommentInbox({ account }: { account: PublicAccount }) {
                       </article>
                     ))}
 
-                    <div className="mt-3 border-t border-line pt-3">
-                      <textarea
-                        dir="auto"
-                        value={drafts[root.id] ?? ''}
-                        onChange={(event) => setDrafts((current) => ({ ...current, [root.id]: event.target.value }))}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-                            event.preventDefault();
-                            void reply(root.id);
-                          }
-                        }}
-                        rows={2}
-                        maxLength={4000}
-                        placeholder="پاسخ به این پیام…"
-                        className="field min-w-0 resize-y text-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => void reply(root.id)}
-                        disabled={busyId === root.id || !(drafts[root.id] ?? '').trim()}
-                        className="mt-2 rounded-lg border border-accent bg-accent/10 px-4 py-1.5 text-xs font-bold text-accent transition hover:bg-accent hover:text-ink disabled:opacity-50"
-                      >
-                        {busyId === root.id ? 'در حال ارسال…' : 'ارسال پاسخ'}
-                      </button>
-                    </div>
                   </li>
                 ))}
                 </ul>
