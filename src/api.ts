@@ -78,6 +78,9 @@ export const apiSetUserStatus = (username: string, active: boolean) =>
 export const apiResetPassword = (username: string, newPassword: string) =>
   call('data', { action: 'users:resetPassword', username, newPassword });
 
+export const apiRenameUser = (username: string, newUsername: string) =>
+  call<AccountInfo>('data', { action: 'users:rename', username, newUsername });
+
 export const apiUsersProgress = () =>
   call<{ rows: import('./types').UserProgressRow[] }>('data', { action: 'users:progress' });
 

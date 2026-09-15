@@ -7,6 +7,7 @@ import {
   apiListNotifications,
   apiPostComment,
   apiResetPassword,
+  apiRenameUser,
   apiSetUserStatus,
   apiUsersProgress,
 } from '../api';
@@ -178,6 +179,8 @@ function CreateUserForm({ account }: { account: PublicAccount }) {
             autoComplete="off"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            pattern="[A-Za-z0-9._-]{3,32}"
+            title="۳ تا ۳۲ نویسه؛ فقط حروف لاتین، عدد، نقطه، خط تیره یا زیرخط"
             required
             className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
           />
@@ -451,6 +454,21 @@ function UserActions({ account, row, onInspect }: { account: PublicAccount; row:
     setNote(String(res.error ?? res.message ?? ''));
   };
 
+  const rename = async () => {
+    const next = window.prompt(`نام کاربری جدید برای «${row.username}»:`, row.username);
+    const newUsername = next?.trim() ?? '';
+    if (!newUsername || newUsername.toLowerCase() === row.username.toLowerCase()) return;
+    setBusy(true);
+    setNote('');
+    const res = await apiRenameUser(row.username, newUsername);
+    if (res.error) setNote(res.error);
+    else {
+      setNote(res.message ?? 'نام کاربری تغییر کرد.');
+      window.dispatchEvent(new Event('users-changed'));
+    }
+    setBusy(false);
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <button
@@ -475,6 +493,15 @@ function UserActions({ account, row, onInspect }: { account: PublicAccount; row:
           >
             تغییر رمز
           </button>
+          {row.role === 'user' && (
+            <button
+              disabled={busy}
+              onClick={() => void rename()}
+              className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:bg-raised"
+            >
+              ویرایش نام کاربری
+            </button>
+          )}
         </>
       )}
       {note && <span className="block w-full text-[10px] text-muted">{note}</span>}

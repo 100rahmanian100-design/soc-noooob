@@ -243,8 +243,8 @@ export async function handleAuth(ctx: ApiCtx): Promise<ApiResult> {
       const inviteCode = str(ctx.body.inviteCode);
 
       if (inviteCode !== INVITE_CODE) return err(403, 'کد دعوتی نامعتبر است.');
-      if (!/^[a-zA-Z0-9_-]{3,32}$/.test(username))
-        return err(400, 'نام کاربری باید ۳ تا ۳۲ نویسه لاتین، عدد، خط تیره یا زیرخط باشد.');
+      if (!/^[a-zA-Z0-9._-]{3,32}$/.test(username))
+        return err(400, 'نام کاربری باید ۳ تا ۳۲ نویسه و فقط شامل حروف لاتین، عدد، نقطه، خط تیره یا زیرخط باشد.');
       if (password.length < 8) return err(400, 'رمز عبور باید حداقل ۸ نویسه باشد.');
 
       const file = await getAccounts();
@@ -657,8 +657,8 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       const newRole = str(ctx.body.role) as Role;
       const email = str(ctx.body.email) || null;
 
-      if (!/^[a-zA-Z0-9_-]{3,32}$/.test(username))
-        return err(400, 'نام کاربری باید ۳ تا ۳۲ نویسه لاتین، عدد، خط تیره یا زیرخط باشد.');
+      if (!/^[a-zA-Z0-9._-]{3,32}$/.test(username))
+        return err(400, 'نام کاربری باید ۳ تا ۳۲ نویسه و فقط شامل حروف لاتین، عدد، نقطه، خط تیره یا زیرخط باشد.');
       if (password.length < 8) return err(400, 'رمز عبور باید حداقل ۸ نویسه باشد.');
       if (account.role === 'admin' && newRole !== 'user')
         return err(403, 'ادمین فقط می‌تواند کاربر عادی بسازد.');
@@ -720,6 +720,63 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       target.passHash = hashPassword(newPassword);
       await saveAccounts(file);
       return ok({ message: `رمز عبور «${username}» بازنشانی شد.` });
+    }
+
+    case 'users:rename': {
+      if (account.role === 'user') return err(403, 'دسترسی مجاز نیست.');
+      const username = str(ctx.body.username);
+      const newUsername = str(ctx.body.newUsername);
+      if (!/^[a-zA-Z0-9._-]{3,32}$/.test(newUsername))
+        return err(400, 'نام کاربری باید ۳ تا ۳۲ نویسه و فقط شامل حروف لاتین، عدد، نقطه، خط تیره یا زیرخط باشد.');
+
+      const accountsFile = await getAccounts();
+      const target = accountsFile.accounts.find(
+        (a) => a.username.toLowerCase() === username.toLowerCase(),
+      );
+      if (!target) return err(404, 'کاربر پیدا نشد.');
+      if (target.role !== 'user') return err(403, 'فقط نام کاربری کاربران عادی قابل ویرایش است.');
+      if (account.role === 'admin' && target.createdBy?.toLowerCase() !== account.username.toLowerCase())
+        return err(403, 'ادمین فقط می‌تواند نام کاربری کاربران خودش را تغییر دهد.');
+      if (target.username.toLowerCase() === newUsername.toLowerCase())
+        return ok({ account: publicAccount(target), message: 'نام کاربری تغییری نکرد.' });
+      if (
+        accountsFile.accounts.some(
+          (a) => a.username.toLowerCase() === newUsername.toLowerCase(),
+        )
+      )
+        return err(409, 'این نام کاربری قبلاً استفاده شده است.');
+
+      const oldUsername = target.username;
+      const oldKey = oldUsername.toLowerCase();
+      const userData = await getUserData(oldUsername);
+      userData.username = newUsername;
+      await saveUserData(userData);
+
+      const commentsFile = await getComments();
+      for (const comment of commentsFile.comments) {
+        if (comment.author.toLowerCase() === oldKey) comment.author = newUsername;
+        if (comment.targetAdmin?.toLowerCase() === oldKey) comment.targetAdmin = newUsername;
+        if (comment.targetUser?.toLowerCase() === oldKey) comment.targetUser = newUsername;
+      }
+      await saveComments(commentsFile);
+
+      const notificationsFile = await getNotifications();
+      for (const notification of notificationsFile.notifications) {
+        if (notification.user.toLowerCase() === oldKey) notification.user = newUsername;
+        if (notification.actor.toLowerCase() === oldKey) notification.actor = newUsername;
+      }
+      await saveNotifications(notificationsFile);
+
+      const chatFile = await getChat();
+      for (const message of chatFile.messages) {
+        if (message.sender.toLowerCase() === oldKey) message.sender = newUsername;
+        if (message.recipient.toLowerCase() === oldKey) message.recipient = newUsername;
+      }
+      await saveChat(chatFile);
+
+      target.username = newUsername;
+      await saveAccounts(accountsFile);
+      return ok({ account: publicAccount(target), message: `نام کاربری به «${newUsername}» تغییر کرد.` });
     }
 
     // ---------------- پایش پیشرفت کاربران (پنل ادمین) ----------------
