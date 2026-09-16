@@ -12,7 +12,7 @@ interface Props {
   onOpenChat: (username: string) => void;
   notifications: AppNotification[];
   unread: number;
-  onRefreshNotifications: () => Promise<void | undefined>;
+  onRefreshNotifications: (force?: boolean) => Promise<void | undefined>;
   onMarkAllNotificationsRead: () => Promise<void>;
 }
 
@@ -65,7 +65,6 @@ export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenCo
     setLoading(true);
     try {
       await onRefreshNotifications();
-
     } finally {
       setLoading(false);
     }

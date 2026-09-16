@@ -41,6 +41,7 @@ export default function App() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const notificationRequest = useRef<Promise<void> | null>(null);
+  const lastNotificationLoadAt = useRef(0);
 
   useEffect(() => {
     const onHash = () => {
@@ -65,8 +66,11 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (force = false) => {
     if (!account) return;
+    // Blob Hobby has a 10k/month read quota. Reuse the current browser state for
+    // five minutes; local app events can still force an immediate refresh.
+    if (!force && Date.now() - lastNotificationLoadAt.current < 5 * 60_000) return;
     if (notificationRequest.current) return notificationRequest.current;
     const request = (async () => {
       try {
@@ -75,6 +79,7 @@ export default function App() {
         setNotifications(next);
         setUnreadNotifications(res.unread ?? 0);
         setChatUnread(next.filter((n) => n.kind === 'chat-message' && !n.read).length);
+        lastNotificationLoadAt.current = Date.now();
       } finally {
         notificationRequest.current = null;
       }
@@ -97,22 +102,19 @@ export default function App() {
       setChatUnread(0);
       setNotifications([]);
       setUnreadNotifications(0);
+      lastNotificationLoadAt.current = 0;
       return;
     }
     void loadNotifications();
-    const refresh = () => void loadNotifications();
+    const refresh = () => void loadNotifications(true);
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') void loadNotifications();
     };
     window.addEventListener('notifications-updated', refresh);
     document.addEventListener('visibilitychange', onVisibilityChange);
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void loadNotifications();
-    }, 120_000);
     return () => {
       window.removeEventListener('notifications-updated', refresh);
       document.removeEventListener('visibilitychange', onVisibilityChange);
-      window.clearInterval(timer);
     };
   }, [account, loadNotifications]);
 
@@ -143,6 +145,7 @@ export default function App() {
     setChatUnread(0);
     setNotifications([]);
     setUnreadNotifications(0);
+    lastNotificationLoadAt.current = 0;
     window.location.hash = '#/auth';
     setRoute('auth');
   }, []);
