@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react';
-// ————— ثبت‌نام عمومی غیرفعال است؛ سوپر ادمین از قبل ساخته شده —————
-// برای فعال‌سازی دوباره، کامنت‌های «ثبت‌نام» را در این فایل بردارید.
-// import { apiRegister, apiStatus, type StatusInfo } from '../api';
-import { apiLogin } from '../api';
+import { apiLogin, apiRegister, apiStatus, type StatusInfo } from '../api';
 import type { PublicAccount } from '../types';
 
 interface Props {
@@ -11,30 +8,27 @@ interface Props {
 }
 
 export default function AuthPage({ account, onAuthed }: Props) {
-  // ————— ثبت‌نام غیرفعال — فقط ورود —————
-  // const [status, setStatus] = useState<StatusInfo | null>(null);
-  // const [mode, setMode] = useState<'login' | 'register'>('login');
-  // const [inviteCode, setInviteCode] = useState('');
-  const mode: 'login' | 'register' = 'login';
+  const [status, setStatus] = useState<StatusInfo | null>(null);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [inviteCode, setInviteCode] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // ————— ثبت‌نام غیرفعال: بررسی وضعیت اولین ثبت‌نام کامنت شد —————
-  // useEffect(() => {
-  //   apiStatus().then(setStatus).catch(() => setStatus({ firstRegisterOpen: false }));
-  // }, []);
-  //
-  // useEffect(() => {
-  //   if (status && status.firstRegisterOpen) {
-  //     setMode('register');
-  //     setNotice(
-  //       'سیستم هنوز هیچ حسابی ندارد. با کد دعوتی، نخستین ثبت‌نام را انجام دهید تا سوپر ادمین شوید.',
-  //     );
-  //   }
-  // }, [status]);
+  useEffect(() => {
+    apiStatus().then(setStatus).catch(() => setStatus({ firstRegisterOpen: false }));
+  }, []);
+
+  useEffect(() => {
+    if (status && status.firstRegisterOpen) {
+      setMode('register');
+      setNotice(
+        'سیستم هنوز هیچ حسابی ندارد. با کد دعوتی، نخستین ثبت‌نام را انجام دهید تا سوپر ادمین شوید.',
+      );
+    }
+  }, [status]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,12 +36,10 @@ export default function AuthPage({ account, onAuthed }: Props) {
     setNotice('');
     setBusy(true);
     try {
-      // ————— ثبت‌نام غیرفعال: فقط ورود —————
-      // const res =
-      //   mode === 'login'
-      //     ? await apiLogin(username, password)
-      //     : await apiRegister(username, password, inviteCode);
-      const res = await apiLogin(username, password);
+      const res =
+        mode === 'login'
+          ? await apiLogin(username, password)
+          : await apiRegister(username, password, inviteCode);
       if (res.error) {
         setError(res.error);
         return;
@@ -84,10 +76,9 @@ export default function AuthPage({ account, onAuthed }: Props) {
 
       {/* فرم — با کلاس‌های .auth-form و .field مرجع */}
       <div className="auth-form">
-        <p className="eyebrow accent">ورود</p>
+        <p className="eyebrow accent">{mode === 'login' ? 'ورود' : 'ثبت‌نام'}</p>
         <h1>خوش آمدید</h1>
 
-        {/* ————— ثبت‌نام غیرفعال: تب انتخاب حالت کامنت شد —————
         {!status?.firstRegisterOpen && (
           <div className="filters" style={{ marginTop: 20 }}>
             <button
@@ -106,7 +97,6 @@ export default function AuthPage({ account, onAuthed }: Props) {
             </button>
           </div>
         )}
-        ————— پایان بخش ثبت‌نام ————— */}
 
         {notice && <p className="notice warn">{notice}</p>}
         {error && (
@@ -139,7 +129,6 @@ export default function AuthPage({ account, onAuthed }: Props) {
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
           />
 
-          {/* ————— ثبت‌نام غیرفعال: فیلد کد دعوتی کامنت شد —————
           {mode === 'register' && (
             <>
               <label htmlFor="auth-invite">کد دعوتی</label>
@@ -154,10 +143,9 @@ export default function AuthPage({ account, onAuthed }: Props) {
               <span className="small muted">نخستین ثبت‌نام با کد دعوتی، حساب سوپر ادمین می‌سازد.</span>
             </>
           )}
-          ————— پایان بخش ثبت‌نام ————— */}
 
           <button type="submit" className="primary" disabled={busy}>
-            {busy ? 'لطفاً صبر کنید…' : 'ورود'}
+            {busy ? 'لطفاً صبر کنید…' : mode === 'login' ? 'ورود' : 'ثبت‌نام'}
           </button>
         </form>
 
