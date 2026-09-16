@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiListNotifications, apiMarkNotifications } from '../api';
+import { useEffect, useRef, useState } from 'react';
 import type { AppNotification, PublicAccount } from '../types';
 import type { Route } from '../App';
 
@@ -11,6 +10,10 @@ interface Props {
   /** برای deep-link و پرش به فاز + پیام مربوطه */
   onOpenComment: (phase: Route, commentId: string) => void;
   onOpenChat: (username: string) => void;
+  notifications: AppNotification[];
+  unread: number;
+  onRefreshNotifications: () => Promise<void | undefined>;
+  onMarkAllNotificationsRead: () => Promise<void>;
 }
 
 const VIEW_TITLES: Record<string, string> = {
@@ -38,38 +41,20 @@ function fmtRelative(iso: string): string {
   }
 }
 
-export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment, onOpenChat }: Props) {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [unread, setUnread] = useState(0);
+export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment, onOpenChat, notifications, unread, onRefreshNotifications, onMarkAllNotificationsRead }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await apiListNotifications();
-      setNotifications(res.notifications ?? []);
-      setUnread(res.unread ?? 0);
-    } catch {
-      /* خطای شبکه — خاموش */
-    }
-  }, []);
-
   useEffect(() => {
-    void load();
-    const onRefresh = () => void load();
     const onOutside = (e: MouseEvent) => {
       if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
     };
-    window.addEventListener('notifications-updated', onRefresh);
     window.addEventListener('mousedown', onOutside);
-    const timer = window.setInterval(() => void load(), 20_000);
     return () => {
-      window.removeEventListener('notifications-updated', onRefresh);
       window.removeEventListener('mousedown', onOutside);
-      window.clearInterval(timer);
     };
-  }, [load]);
+  }, []);
 
   const toggle = async () => {
     if (open) {
@@ -79,13 +64,8 @@ export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenCo
     setOpen(true);
     setLoading(true);
     try {
-      await load();
-      // با باز شدن پنل، همه اعلان‌ها خوانده‌شده می‌شوند
-      if (unread > 0) {
-        await apiMarkNotifications([], true);
-        setNotifications((ns) => ns.map((n) => ({ ...n, read: true })));
-        setUnread(0);
-      }
+      await onRefreshNotifications();
+
     } finally {
       setLoading(false);
     }
@@ -148,7 +128,7 @@ export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenCo
                   مرکز اعلان‌ها
                 </span>
                 <button
-                  onClick={() => void apiMarkNotifications([], true).then(() => load())}
+                  onClick={() => void onMarkAllNotificationsRead()}
                   className="plain muted"
                   style={{ minHeight: 32, padding: '2px 8px', fontSize: 12 }}
                 >

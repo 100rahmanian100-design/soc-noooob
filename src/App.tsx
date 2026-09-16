@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { apiListNotifications, apiLogout, apiMe } from './api';
-import type { PublicAccount } from './types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiListNotifications, apiLogout, apiMarkNotifications, apiMe } from './api';
+import type { AppNotification, PublicAccount } from './types';
 import AuthPage from './pages/AuthPage';
 import GuidePage, { type GuideView } from './pages/GuidePage';
 import ChatPage from './pages/ChatPage';
@@ -37,7 +37,10 @@ export default function App() {
   const [focus, setFocus] = useState<{ commentId: string; nonce: number } | null>(null);
   const [chatUser, setChatUser] = useState<string | null>(parseHash().chatUser);
   const [chatUnread, setChatUnread] = useState(0);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const notificationRequest = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     const onHash = () => {
@@ -62,24 +65,56 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
+  const loadNotifications = useCallback(async () => {
+    if (!account) return;
+    if (notificationRequest.current) return notificationRequest.current;
+    const request = (async () => {
+      try {
+        const res = await apiListNotifications();
+        const next = res.notifications ?? [];
+        setNotifications(next);
+        setUnreadNotifications(res.unread ?? 0);
+        setChatUnread(next.filter((n) => n.kind === 'chat-message' && !n.read).length);
+      } finally {
+        notificationRequest.current = null;
+      }
+    })();
+    notificationRequest.current = request;
+    return request;
+  }, [account]);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    const res = await apiMarkNotifications([], true);
+    if (!res.error) {
+      setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+      setUnreadNotifications(0);
+      setChatUnread(0);
+    }
+  }, []);
+
   useEffect(() => {
     if (!account) {
       setChatUnread(0);
+      setNotifications([]);
+      setUnreadNotifications(0);
       return;
     }
-    const loadChatUnread = async () => {
-      const res = await apiListNotifications();
-      setChatUnread((res.notifications ?? []).filter((n) => n.kind === 'chat-message' && !n.read).length);
+    void loadNotifications();
+    const refresh = () => void loadNotifications();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void loadNotifications();
     };
-    void loadChatUnread();
-    const refresh = () => void loadChatUnread();
     window.addEventListener('notifications-updated', refresh);
-    const timer = window.setInterval(() => void loadChatUnread(), 20_000);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadNotifications();
+    }, 120_000);
     return () => {
       window.removeEventListener('notifications-updated', refresh);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       window.clearInterval(timer);
     };
-  }, [account]);
+  }, [account, loadNotifications]);
 
   const navigate = useCallback((r: Route) => {
     if (parseHash().route === r && r !== 'auth') return;
@@ -106,6 +141,8 @@ export default function App() {
     await apiLogout();
     setAccount(null);
     setChatUnread(0);
+    setNotifications([]);
+    setUnreadNotifications(0);
     window.location.hash = '#/auth';
     setRoute('auth');
   }, []);
@@ -168,6 +205,10 @@ export default function App() {
           onLogout={() => void onLogout()}
           onOpenComment={openComment}
           onOpenChat={openChat}
+          notifications={notifications}
+          unread={unreadNotifications}
+          onRefreshNotifications={loadNotifications}
+          onMarkAllNotificationsRead={markAllNotificationsRead}
         />
 
         <main className="content">
