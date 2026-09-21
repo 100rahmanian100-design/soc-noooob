@@ -1,5 +1,6 @@
 import type { PublicAccount } from '../types';
 import type { Route } from '../App';
+import type { AdminTab } from '../pages/AdminPage';
 
 interface Props {
   view: Route;
@@ -16,6 +17,11 @@ interface Props {
   /** حالت نمای یوزر ادمین */
   previewAsUser?: boolean;
   onTogglePreview?: () => void;
+  /** تب فعال پنل ادمین + ناوبری آن (از سایدبار) */
+  adminTab?: AdminTab;
+  onSelectAdminTab?: (t: AdminTab) => void;
+  adminInboxUnread?: number;
+  adminUserCount?: number | null;
 }
 
 const NAV_ITEMS: Array<{ id: Route; label: string; adminOnly?: boolean }> = [
@@ -35,7 +41,26 @@ const ROLE_FA: Record<string, string> = {
   user: 'کاربر',
 };
 
-export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout, menuLabels, navOrder, previewAsUser, onTogglePreview }: Props) {
+/** آیتم‌های سایدبار در حالت مدیریت */
+const ADMIN_NAV: Array<{ id: AdminTab | 'chat'; label: string }> = [
+  { id: 'dashboard', label: '📊 داشبورد' },
+  { id: 'users', label: '👥 کاربران' },
+  { id: 'inbox', label: '📥 صندوق پیام‌ها' },
+  { id: 'content', label: '✏️ منوها و محتوا' },
+  { id: 'profile', label: '👤 پروفایل' },
+  { id: 'chat', label: '💬 گفت‌وگو' },
+];
+
+function Badge({ value }: { value: number }) {
+  if (!value || value <= 0) return null;
+  return (
+    <span className="pill" style={{ marginInlineStart: 'auto', padding: '1px 8px', fontSize: 11, background: 'var(--red)', color: 'oklch(97% .007 105)', borderColor: 'transparent' }}>
+      {value > 99 ? '۹۹+' : value.toLocaleString('fa-IR')}
+    </span>
+  );
+}
+
+export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout, menuLabels, navOrder, previewAsUser, onTogglePreview, adminTab = 'dashboard', onSelectAdminTab, adminInboxUnread = 0, adminUserCount = null }: Props) {
   const label = (id: string) =>
     menuLabels?.[id] ?? NAV_ITEMS.find((n) => n.id === id)?.label ?? id;
 
@@ -48,7 +73,19 @@ export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, 
           { id: 'chat' as Route, label: label('chat') === 'chat' ? 'گفت‌وگو' : label('chat') },
         ]
       : NAV_ITEMS.filter((it) => !it.adminOnly)
-    : NAV_ITEMS.filter((it) => it.adminOnly || it.id === 'chat');
+    : [];
+
+  const selectAdminNav = (id: AdminTab | 'chat') => {
+    if (id === 'chat') navigate('chat');
+    else onSelectAdminTab?.(id);
+    onClose();
+  };
+
+  const badgeFor = (id: AdminTab | 'chat'): number => {
+    if (id === 'users') return adminUserCount ?? 0;
+    if (id === 'inbox') return adminInboxUnread;
+    return 0;
+  };
 
   return (
     <>
@@ -73,23 +110,44 @@ export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, 
         </div>
 
         <div className="nav-label">
-          {isAdmin ? (previewAsUser ? 'نمای یوزر 👁' : 'مدیریت سیستم') : 'دوره آزمایشی'}
+          {isAdmin ? (previewAsUser ? 'نمای یوزر 👁' : 'پنل مدیریت') : 'دوره آزمایشی'}
         </div>
         <nav className="nav">
-          {items.map((it) => (
-            <button
-              key={it.id}
-              className={view === it.id ? 'active' : undefined}
-              onClick={() => {
-                navigate(it.id);
-                onClose();
-              }}
-            >
-              <span>{it.label}</span>
-              {it.id === 'chat' && chatUnread > 0 && <span className="dot nav-unread-dot" aria-label="پیام خوانده‌نشده" />}
-              {view === it.id && !(it.id === 'chat' && chatUnread > 0) && <span className="dot nav-num" aria-hidden="true" />}
-            </button>
-          ))}
+          {showUserNav
+            ? items.map((it) => (
+              <button
+                key={it.id}
+                className={view === it.id ? 'active' : undefined}
+                onClick={() => {
+                  navigate(it.id);
+                  onClose();
+                }}
+              >
+                <span>{it.label}</span>
+                {it.id === 'chat' && chatUnread > 0 && <span className="dot nav-unread-dot" aria-label="پیام خوانده‌نشده" />}
+                {view === it.id && !(it.id === 'chat' && chatUnread > 0) && <span className="dot nav-num" aria-hidden="true" />}
+              </button>
+            ))
+            : ADMIN_NAV.map((it) => {
+              const active = it.id === 'chat' ? view === 'chat' : view === 'admin' && adminTab === it.id;
+              const badge = badgeFor(it.id);
+              return (
+                <button
+                  key={it.id}
+                  className={active ? 'active' : undefined}
+                  onClick={() => selectAdminNav(it.id)}
+                >
+                  <span>{it.label}</span>
+                  {it.id === 'chat' && chatUnread > 0 ? (
+                    <span className="dot nav-unread-dot" aria-label="پیام خوانده‌نشده" />
+                  ) : it.id !== 'chat' && badge > 0 ? (
+                    <Badge value={badge} />
+                  ) : active ? (
+                    <span className="dot nav-num" aria-hidden="true" />
+                  ) : null}
+                </button>
+              );
+            })}
         </nav>
 
         <div className="side-bottom">

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiGetContent, apiListNotifications, apiLogout, apiMarkNotifications, apiMe } from './api';
+import { apiGetContent, apiListNotifications, apiLogout, apiMarkNotifications, apiMe, apiUsersProgress } from './api';
 import type { AppNotification, PublicAccount } from './types';
 import AuthPage from './pages/AuthPage';
 import GuidePage, { type GuideView } from './pages/GuidePage';
 import ChatPage from './pages/ChatPage';
-import AdminPage from './pages/AdminPage';
+import AdminPage, { ADMIN_TAB_META, type AdminTab } from './pages/AdminPage';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 
@@ -18,22 +18,25 @@ function isCustomRoute(base: string): base is CustomPageRoute {
   return /^custom-[a-z0-9-]{1,32}$/.test(base);
 }
 
-/** پارس هش: #/phase-2?c=<commentId> */
-function parseHash(): { route: Route; focusCommentId: string | null; chatUser: string | null } {
+/** پارس هش: #/phase-2?c=<commentId> و #/admin?tab=<users|inbox|...> */
+function parseHash(): { route: Route; focusCommentId: string | null; chatUser: string | null; adminTab: AdminTab } {
   let raw = window.location.hash.replace(/^#\/?/, '');
   let focusCommentId: string | null = null;
   let chatUser: string | null = null;
+  let adminTab: AdminTab = 'dashboard';
   const queryIndex = raw.indexOf('?');
   if (queryIndex >= 0) {
     const query = new URLSearchParams(raw.slice(queryIndex + 1));
     raw = raw.slice(0, queryIndex);
     focusCommentId = query.get('c');
     chatUser = query.get('u');
+    const t = query.get('tab');
+    if (t === 'users' || t === 'inbox' || t === 'content' || t === 'profile') adminTab = t;
   }
   const base = raw || 'home';
   const route: Route =
     (VALID_VIEWS as string[]).includes(base) || isCustomRoute(base) ? (base as Route) : 'home';
-  return { route, focusCommentId, chatUser };
+  return { route, focusCommentId, chatUser, adminTab };
 }
 
 export default function App() {
@@ -48,6 +51,11 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuLabels, setMenuLabels] = useState<Record<string, string> | undefined>(undefined);
   const [navOrder, setNavOrder] = useState<string[] | undefined>(undefined);
+  /** تب فعال پنل ادمین — از سایدبار انتخاب می‌شود */
+  const [adminTab, setAdminTab] = useState<AdminTab>(parseHash().adminTab);
+  /** بج‌های سایدبار ادمین */
+  const [adminInboxUnread, setAdminInboxUnread] = useState(0);
+  const [adminUserCount, setAdminUserCount] = useState<number | null>(null);
   /** حالت «نمای یوزر» ادمین: منوها و محتوا دقیقاً مثل کاربران ساخته‌ی خودش */
   const [previewAsUser, setPreviewAsUser] = useState<boolean>(() => {
     try {
@@ -64,6 +72,7 @@ export default function App() {
       const p = parseHash();
       setRoute(p.route);
       setChatUser(p.chatUser);
+      setAdminTab(p.adminTab);
       if (p.focusCommentId) {
         setFocus((f) => ({ commentId: p.focusCommentId!, nonce: (f?.nonce ?? 0) + 1 }));
       } else {
@@ -112,6 +121,9 @@ export default function App() {
         setNotifications(next);
         setUnreadNotifications(res.unread ?? 0);
         setChatUnread(next.filter((n) => n.kind === 'chat-message' && !n.read).length);
+        // بج صندوق ادمین در سایدبار
+        const byActor = (res as { unreadByActorPhase?: Record<string, number> }).unreadByActorPhase ?? {};
+        setAdminInboxUnread(Object.values(byActor).reduce((s, n) => s + (n ?? 0), 0));
         lastNotificationLoadAt.current = Date.now();
       } finally {
         notificationRequest.current = null;
@@ -127,6 +139,7 @@ export default function App() {
       setNotifications((items) => items.map((item) => ({ ...item, read: true })));
       setUnreadNotifications(0);
       setChatUnread(0);
+      setAdminInboxUnread(0);
     }
   }, []);
 
@@ -155,6 +168,14 @@ export default function App() {
     if (parseHash().route === r && r !== 'auth') return;
     window.location.hash = `#/${r}`;
     setRoute(r);
+    setFocus(null);
+  }, []);
+
+  /** رفتن به تب مشخص پنل ادمین (ناوبری سایدبار) */
+  const goAdminTab = useCallback((t: AdminTab) => {
+    window.location.hash = `#/admin?tab=${t}`;
+    setRoute('admin');
+    setAdminTab(t);
     setFocus(null);
   }, []);
 
@@ -192,14 +213,34 @@ export default function App() {
       } catch {
         /* ignore */
       }
-      // رفتن به نمای یوزر → میز کار؛ برگشت → پنل مدیریت
+      // رفتن به نمای یوزر → میز کار؛ برگشت → داشبورد پنل مدیریت
       const target: Route = next ? 'home' : 'admin';
-      window.location.hash = `#/${target}`;
+      window.location.hash = next ? `#/${target}` : `#/${target}?tab=dashboard`;
       setRoute(target);
+      if (!next) setAdminTab('dashboard');
       setFocus(null);
       return next;
     });
   }, []);
+
+  // بج تعداد کاربران در سایدبار ادمین
+  useEffect(() => {
+    if (!account || (account.role !== 'admin' && account.role !== 'superadmin')) {
+      setAdminUserCount(null);
+      return;
+    }
+    const load = async () => {
+      try {
+        const res = await apiUsersProgress();
+        setAdminUserCount((res.rows ?? []).filter((r) => r.role === 'user').length);
+      } catch {
+        /* ignore */
+      }
+    };
+    void load();
+    window.addEventListener('users-changed', load);
+    return () => window.removeEventListener('users-changed', load);
+  }, [account]);
 
   if (loading) {
     return (
@@ -240,7 +281,11 @@ export default function App() {
   const showChat = effectiveRoute === 'chat';
   // صفحات سفارشی ادمین هم مثل صفحات راهنما رندر می‌شوند
   const guideView: GuideView | CustomPageRoute = (effectiveRoute as GuideView | CustomPageRoute) ?? 'home';
-  const customTitle = isCustomRoute(effectiveRoute) ? (menuLabels?.[effectiveRoute] ?? 'صفحه آموزشی') : undefined;
+  const customTitle = isCustomRoute(effectiveRoute)
+    ? (menuLabels?.[effectiveRoute] ?? 'صفحه آموزشی')
+    : showAdmin
+      ? `پنل مدیریت — ${ADMIN_TAB_META[adminTab]}`
+      : undefined;
 
   return (
     <div className="min-h-screen">
@@ -257,6 +302,10 @@ export default function App() {
         navOrder={navOrder}
         previewAsUser={previewing}
         onTogglePreview={togglePreviewAsUser}
+        adminTab={adminTab}
+        onSelectAdminTab={goAdminTab}
+        adminInboxUnread={adminInboxUnread}
+        adminUserCount={adminUserCount}
       />
 
       {/* شل — مطابق سیستم مرجع: .shell + .topbar + .content */}
@@ -284,7 +333,7 @@ export default function App() {
           )}
           <div key={effectiveRoute} className="view-enter fade">
             {showAdmin ? (
-              <AdminPage account={account} onAccountChange={setAccount} />
+              <AdminPage account={account} onAccountChange={setAccount} tab={adminTab} onTabChange={goAdminTab} />
             ) : showChat ? (
               <ChatPage account={account} focusUser={chatUser} />
             ) : (

@@ -21,9 +21,20 @@ import ContentEditor from '../components/ContentEditor';
 interface Props {
   account: PublicAccount;
   onAccountChange: (a: PublicAccount) => void;
+  /** تب فعال پنل (ناوبری از سایدبار) */
+  tab: AdminTab;
+  onTabChange: (t: AdminTab) => void;
 }
 
-type AdminTab = 'dashboard' | 'users' | 'inbox' | 'content' | 'profile';
+export type AdminTab = 'dashboard' | 'users' | 'inbox' | 'content' | 'profile';
+
+export const ADMIN_TAB_META: Record<AdminTab, string> = {
+  dashboard: 'داشبورد',
+  users: 'کاربران',
+  inbox: 'صندوق پیام‌ها',
+  content: 'منوها و محتوا',
+  profile: 'پروفایل',
+};
 
 const ALL_PHASES = [
   ['phase-1', 'فاز ۱ — SIEM'],
@@ -104,38 +115,12 @@ function MiniBar({ pct, small = false }: { pct: number; small?: boolean }) {
   );
 }
 
-export default function AdminPage({ account, onAccountChange }: Props) {
-  const [tab, setTab] = useState<AdminTab>('dashboard');
-  const [userCount, setUserCount] = useState<number | null>(null);
-  const [inboxUnread, setInboxUnread] = useState(0);
-
-  const loadBadges = useCallback(async () => {
-    try {
-      const [usersRes, notifRes] = await Promise.all([apiUsersProgress(), apiListNotifications()]);
-      const rows = usersRes.rows ?? [];
-      setUserCount(rows.filter((r) => r.role === 'user').length);
-      const byActor = (notifRes as { unreadByActorPhase?: Record<string, number> }).unreadByActorPhase ?? {};
-      setInboxUnread(Object.values(byActor).reduce((s, n) => s + (n ?? 0), 0));
-    } catch {
-      /* badgeها اختیاری‌اند */
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadBadges();
-    window.addEventListener('users-changed', loadBadges);
-    window.addEventListener('notifications-updated', loadBadges);
-    return () => {
-      window.removeEventListener('users-changed', loadBadges);
-      window.removeEventListener('notifications-updated', loadBadges);
-    };
-  }, [loadBadges]);
-
+export default function AdminPage({ account, onAccountChange, tab, onTabChange }: Props) {
   return (
     <div className="space-y-5">
       <header>
         <p className="text-xs font-bold tracking-widest text-accent">ADMIN MONITORING</p>
-        <h1 className="mt-1 text-2xl font-extrabold">پنل مدیریت و پایش پیشرفت</h1>
+        <h1 className="mt-1 text-2xl font-extrabold">{ADMIN_TAB_META[tab]}</h1>
         <p className="mt-1 text-sm leading-7 text-muted">
           {account.role === 'superadmin'
             ? 'به‌عنوان سوپر ادمین می‌توانید همه کاربران را ببینید، ادمین و کاربر بسازید و به همه گفت‌وگوها پاسخ دهید.'
@@ -143,27 +128,7 @@ export default function AdminPage({ account, onAccountChange }: Props) {
         </p>
       </header>
 
-      <div className="admin-tabs" role="tablist" aria-label="بخش‌های پنل مدیریت">
-        <button type="button" role="tab" aria-selected={tab === 'dashboard'} className={tab === 'dashboard' ? 'active' : undefined} onClick={() => setTab('dashboard')}>
-          📊 داشبورد
-        </button>
-        <button type="button" role="tab" aria-selected={tab === 'users'} className={tab === 'users' ? 'active' : undefined} onClick={() => setTab('users')}>
-          👥 کاربران
-          {userCount !== null && userCount > 0 && <span className="tab-badge">{userCount.toLocaleString('fa-IR')}</span>}
-        </button>
-        <button type="button" role="tab" aria-selected={tab === 'inbox'} className={tab === 'inbox' ? 'active' : undefined} onClick={() => setTab('inbox')}>
-          📥 صندوق پیام‌ها
-          {inboxUnread > 0 && <span className="tab-badge">{inboxUnread.toLocaleString('fa-IR')}</span>}
-        </button>
-        <button type="button" role="tab" aria-selected={tab === 'content'} className={tab === 'content' ? 'active' : undefined} onClick={() => setTab('content')}>
-          ✏️ منوها و محتوا
-        </button>
-        <button type="button" role="tab" aria-selected={tab === 'profile'} className={tab === 'profile' ? 'active' : undefined} onClick={() => setTab('profile')}>
-          👤 پروفایل
-        </button>
-      </div>
-
-      {tab === 'dashboard' && <AdminDashboard account={account} go={setTab} />}
+      {tab === 'dashboard' && <AdminDashboard account={account} go={onTabChange} />}
       {tab === 'users' && (
         <div className="space-y-7">
           <CreateUserForm account={account} />
