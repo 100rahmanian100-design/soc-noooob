@@ -183,6 +183,24 @@ export default function App() {
     setRoute('auth');
   }, []);
 
+  const togglePreviewAsUser = useCallback(() => {
+    setPreviewAsUser((prev) => {
+      const next = !prev;
+      try {
+        if (next) sessionStorage.setItem('admin-preview-as-user', '1');
+        else sessionStorage.removeItem('admin-preview-as-user');
+      } catch {
+        /* ignore */
+      }
+      // رفتن به نمای یوزر → میز کار؛ برگشت → پنل مدیریت
+      const target: Route = next ? 'home' : 'admin';
+      window.location.hash = `#/${target}`;
+      setRoute(target);
+      setFocus(null);
+      return next;
+    });
+  }, []);
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }} className="muted">
@@ -223,24 +241,6 @@ export default function App() {
   // صفحات سفارشی ادمین هم مثل صفحات راهنما رندر می‌شوند
   const guideView: GuideView | CustomPageRoute = (effectiveRoute as GuideView | CustomPageRoute) ?? 'home';
   const customTitle = isCustomRoute(effectiveRoute) ? (menuLabels?.[effectiveRoute] ?? 'صفحه آموزشی') : undefined;
-
-  const togglePreviewAsUser = useCallback(() => {
-    setPreviewAsUser((prev) => {
-      const next = !prev;
-      try {
-        if (next) sessionStorage.setItem('admin-preview-as-user', '1');
-        else sessionStorage.removeItem('admin-preview-as-user');
-      } catch {
-        /* ignore */
-      }
-      // رفتن به نمای یوزر → میز کار؛ برگشت → پنل مدیریت
-      const target: Route = next ? 'home' : 'admin';
-      window.location.hash = `#/${target}`;
-      setRoute(target);
-      setFocus(null);
-      return next;
-    });
-  }, []);
 
   return (
     <div className="min-h-screen">
