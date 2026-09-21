@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiListNotifications, apiLogout, apiMarkNotifications, apiMe } from './api';
+import { apiGetContent, apiListNotifications, apiLogout, apiMarkNotifications, apiMe } from './api';
 import type { AppNotification, PublicAccount } from './types';
 import AuthPage from './pages/AuthPage';
 import GuidePage, { type GuideView } from './pages/GuidePage';
@@ -40,6 +40,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuLabels, setMenuLabels] = useState<Record<string, string> | undefined>(undefined);
   const notificationRequest = useRef<Promise<void> | null>(null);
   const lastNotificationLoadAt = useRef(0);
 
@@ -65,6 +66,16 @@ export default function App() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!account || account.role !== 'user') {
+      setMenuLabels(undefined);
+      return;
+    }
+    apiGetContent().then((res) => {
+      if (res.content?.menus) setMenuLabels(res.content.menus as Record<string, string>);
+    });
+  }, [account]);
 
   const loadNotifications = useCallback(async (force = false) => {
     if (!account) return;
@@ -197,6 +208,7 @@ export default function App() {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         onLogout={() => void onLogout()}
+        menuLabels={menuLabels}
       />
 
       {/* شل — مطابق سیستم مرجع: .shell + .topbar + .content */}

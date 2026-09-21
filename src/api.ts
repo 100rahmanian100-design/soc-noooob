@@ -114,3 +114,19 @@ export const apiChatSend = (targetUsername: string, text: string) =>
     targetUsername,
     text,
   });
+
+// ---------------------------------------------------------------- content (per-admin)
+
+export const apiGetContent = () =>
+  call<{
+    content: import('./contentTypes').SiteContent | null;
+    owner: string | null;
+    isCustom: boolean;
+    updatedAt?: string;
+  }>('data', { action: 'content:get' });
+
+export const apiSetContent = (content: import('./contentTypes').SiteContent) =>
+  call<{ message?: string; updatedAt?: string }>('data', { action: 'content:set', content });
+
+export const apiResetContent = () =>
+  call<{ message?: string }>('data', { action: 'content:reset' });

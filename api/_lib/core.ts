@@ -155,6 +155,11 @@ export interface ChatFile {
   messages: ChatMessage[];
 }
 
+/** محتوای آموزشی هر ادمین — کلید: نام کاربری ادمین (lowercase) */
+export interface ContentsFile {
+  contents: Record<string, { updatedAt: string; content: unknown }>;
+}
+
 // ---------------------------------------------------------------------------
 // لایه ذخیره‌سازی (Blob در پروداکشن / فایل محلی در توسعه)
 // ---------------------------------------------------------------------------
@@ -227,6 +232,7 @@ const blobKeys = {
   comments: 'comments.json.enc',
   notifications: 'notifications.json.enc',
   chat: 'chat.json.enc',
+  contents: 'contents.json.enc',
   userData: (u: string) => `user-data/${encodeURIComponent(u)}.json.enc`,
 };
 
@@ -358,6 +364,15 @@ export async function getChat(): Promise<ChatFile> {
 
 export async function saveChat(file: ChatFile): Promise<void> {
   await writeJSON(blobKeys.chat, file);
+}
+
+export async function getContents(): Promise<ContentsFile> {
+  const data = await readJSON<ContentsFile>(blobKeys.contents);
+  return data ?? { contents: {} };
+}
+
+export async function saveContents(file: ContentsFile): Promise<void> {
+  await writeJSON(blobKeys.contents, file);
 }
 
 export function newId(): string {

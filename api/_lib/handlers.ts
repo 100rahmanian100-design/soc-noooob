@@ -16,6 +16,7 @@ import {
   getAccounts,
   getComments,
   getChat,
+  getContents,
   getNotifications,
   getUserData,
   hashPassword,
@@ -24,6 +25,7 @@ import {
   saveAccounts,
   saveComments,
   saveChat,
+  saveContents,
   saveNotifications,
   saveUserData,
   signSession,
@@ -150,11 +152,12 @@ export const PROGRESS_TASK_KEYS: Record<string, string[]> = {
   'phase-4': [],
 };
 
-function progressSummary(progress: Record<string, boolean>) {
+function progressSummary(progress: Record<string, boolean>, keysByPhase?: Record<string, string[]>) {
+  const source = keysByPhase ?? PROGRESS_TASK_KEYS;
   const perPhase: Record<string, { done: number; total: number; pct: number }> = {};
   let doneAll = 0;
   let totalAll = 0;
-  for (const [phase, keys] of Object.entries(PROGRESS_TASK_KEYS)) {
+  for (const [phase, keys] of Object.entries(source)) {
     const done = keys.filter((k) => progress[k] === true).length;
     const total = keys.length;
     perPhase[phase] = { done, total, pct: total === 0 ? 0 : Math.round((done / total) * 100) };
@@ -162,6 +165,135 @@ function progressSummary(progress: Record<string, boolean>) {
     totalAll += total;
   }
   return { perPhase, total: { done: doneAll, total: totalAll, pct: totalAll === 0 ? 0 : Math.round((doneAll / totalAll) * 100) } };
+}
+
+/** مالک محتوای هر حساب: کاربر → ادمین سازنده؛ ادمین/سوپرادمین → خودش */
+function contentOwnerOf(account: Account): string | null {
+  if (account.role === 'user') return account.createdBy ? account.createdBy.toLowerCase() : null;
+  return account.username.toLowerCase();
+}
+
+/** استخراج taskKeyها از محتوای ذخیره‌شده (ساختار دیتا-محور فرانت) */
+function taskKeysFromStored(stored: unknown): Record<string, string[]> | null {
+  try {
+    const c = stored as {
+      pages?: Record<string, { blocks?: Array<{ type?: string; rows?: Array<{ taskKeys?: unknown }> }> }>;
+    };
+    if (!c || typeof c !== 'object' || !c.pages) return null;
+    const out: Record<string, string[]> = {};
+    for (const pid of ['phase-1', 'phase-2', 'phase-3', 'phase-4']) {
+      const keys: string[] = [];
+      for (const b of c.pages[pid]?.blocks ?? []) {
+        if (b && b.type === 'resource-table' && Array.isArray(b.rows)) {
+          for (const r of b.rows ?? []) {
+            const tks = (r as { taskKeys?: unknown }).taskKeys;
+            if (Array.isArray(tks)) for (const k of tks) if (typeof k === 'string' && k) keys.push(k);
+          }
+        }
+      }
+      out[pid] = keys;
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+async function taskKeysForOwnerLower(ownerLower: string | null): Promise<Record<string, string[]>> {
+  if (!ownerLower) return PROGRESS_TASK_KEYS;
+  try {
+    const file = await getContents();
+    const entry = file.contents[ownerLower];
+    if (!entry) return PROGRESS_TASK_KEYS;
+    const custom = taskKeysFromStored(entry.content);
+    return custom ?? PROGRESS_TASK_KEYS;
+  } catch {
+    return PROGRESS_TASK_KEYS;
+  }
+}
+
+/** اعتبارسنجی سبک محتوای ارسالی ادمین — جلوگیری از داده خراب/خیلی بزرگ */
+function validateSiteContent(raw: unknown): { ok: boolean; error?: string } {
+  try {
+    const c = raw as {
+      menus?: Record<string, unknown>;
+      pages?: Record<string, { headerTitle?: unknown; blocks?: unknown }>;
+    };
+    if (!c || typeof c !== 'object') return { ok: false, error: 'ساختار محتوا نامعتبر است.' };
+    const json = JSON.stringify(c);
+    if (json.length > 220_000) return { ok: false, error: 'حجم محتوا بیش از حد مجاز است.' };
+    const pageIds = ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix'];
+    if (!c.menus || typeof c.menus !== 'object') return { ok: false, error: 'منوها یافت نشد.' };
+    if (!c.pages || typeof c.pages !== 'object') return { ok: false, error: 'صفحات یافت نشد.' };
+    for (const pid of pageIds) {
+      const menu = c.menus[pid];
+      if (typeof menu !== 'string' || menu.trim().length === 0 || menu.length > 80)
+        return { ok: false, error: `لیبل منوی «${pid}» باید بین ۱ تا ۸۰ نویسه باشد.` };
+      const page = c.pages[pid];
+      if (!page || typeof page !== 'object') return { ok: false, error: `صفحه «${pid}» یافت نشد.` };
+      if (typeof page.headerTitle !== 'string' || page.headerTitle.length > 120)
+        return { ok: false, error: `عنوان صفحه «${pid}» نامعتبر است.` };
+      if (!Array.isArray(page.blocks)) return { ok: false, error: `بلوک‌های صفحه «${pid}» نامعتبر است.` };
+      if (page.blocks.length > 120) return { ok: false, error: `تعداد بلوک‌های صفحه «${pid}» بیش از حد مجاز است.` };
+      for (const b of page.blocks as Array<{ type?: unknown; text?: unknown; items?: unknown; headers?: unknown; rows?: unknown; title?: unknown }>) {
+        if (!b || typeof b.type !== 'string') return { ok: false, error: 'نوع بلوک نامعتبر است.' };
+        if (!['section-title', 'paragraph', 'note', 'bullets', 'numbered', 'links', 'resource-table', 'simple-table'].includes(b.type))
+          return { ok: false, error: `نوع بلوک «${String(b.type)}» پشتیبانی نمی‌شود.` };
+        if (typeof b.title !== 'undefined' && typeof b.title !== 'string')
+          return { ok: false, error: 'عنوان بلوک نامعتبر است.' };
+        if (b.title && (b.title as string).length > 200) return { ok: false, error: 'عنوان بلوک خیلی طولانی است.' };
+        if (b.type === 'section-title' || b.type === 'paragraph' || b.type === 'note') {
+          if (typeof b.text !== 'string' || b.text.length > 6000)
+            return { ok: false, error: 'متن بلوک نامعتبر یا خیلی طولانی است.' };
+        }
+        if (b.type === 'bullets' || b.type === 'numbered') {
+          if (!Array.isArray(b.items) || b.items.length > 80) return { ok: false, error: 'آیتم‌های لیست نامعتبر است.' };
+          for (const it of b.items as unknown[]) {
+            if (typeof it !== 'string' || it.length > 4000) return { ok: false, error: 'متن آیتم لیست نامعتبر است.' };
+          }
+        }
+        if (b.type === 'links') {
+          if (!Array.isArray(b.items) || (b.items as unknown[]).length > 60)
+            return { ok: false, error: 'لیست لینک‌ها نامعتبر است.' };
+          for (const it of b.items as Array<{ label?: unknown; href?: unknown }>) {
+            if (!it || typeof it.label !== 'string' || typeof it.href !== 'string')
+              return { ok: false, error: 'لینک نامعتبر است.' };
+            if (it.label.length > 200 || it.href.length > 600)
+              return { ok: false, error: 'لینک خیلی طولانی است.' };
+          }
+        }
+        if (b.type === 'resource-table' || b.type === 'simple-table') {
+          if (!Array.isArray(b.headers) || (b.headers as unknown[]).length > 8)
+            return { ok: false, error: 'سرستون‌های جدول نامعتبر است.' };
+          for (const h of b.headers as unknown[]) {
+            if (typeof h !== 'string' || h.length > 120) return { ok: false, error: 'سرستون جدول نامعتبر است.' };
+          }
+          if (!Array.isArray(b.rows) || (b.rows as unknown[]).length > 80)
+            return { ok: false, error: 'ردیف‌های جدول بیش از حد مجاز است.' };
+          const colCount = (b.headers as unknown[]).length;
+          for (const r of b.rows as Array<{ cells?: unknown; taskKeys?: unknown }>) {
+            if (!r || !Array.isArray(r.cells) || (r.cells as unknown[]).length !== colCount)
+              return { ok: false, error: 'تعداد سلول‌های ردیف باید با سرستون‌ها برابر باشد.' };
+            for (const cell of r.cells as unknown[]) {
+              if (typeof cell !== 'string' || cell.length > 4000)
+                return { ok: false, error: 'متن سلول جدول نامعتبر است.' };
+            }
+            if (b.type === 'resource-table') {
+              if (!Array.isArray(r.taskKeys) || (r.taskKeys as unknown[]).length === 0 || (r.taskKeys as unknown[]).length > 12)
+                return { ok: false, error: 'هر ردیف منابع باید حداقل یک کلید پیشرفت داشته باشد.' };
+              for (const k of r.taskKeys as unknown[]) {
+                if (typeof k !== 'string' || !/^[A-Za-z0-9._-]{1,80}$/.test(k))
+                  return { ok: false, error: 'کلید پیشرفت ردیف نامعتبر است.' };
+              }
+            }
+          }
+        }
+      }
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'ساختار محتوا نامعتبر است.' };
+  }
 }
 
 async function currentAccount(ctx: ApiCtx): Promise<Account | null> {
@@ -779,6 +911,40 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       return ok({ account: publicAccount(target), message: `نام کاربری به «${newUsername}» تغییر کرد.` });
     }
 
+    // ---------------- محتوای آموزشی per-admin ----------------
+    case 'content:get': {
+      // کاربر: محتوای ادمین سازنده خودش؛ ادمین/سوپرادمین: محتوای خودش
+      const ownerLower = contentOwnerOf(account);
+      if (!ownerLower) return ok({ content: null, owner: null, isCustom: false });
+      const file = await getContents();
+      const entry = file.contents[ownerLower];
+      if (!entry) return ok({ content: null, owner: ownerLower, isCustom: false });
+      return ok({ content: entry.content, owner: ownerLower, isCustom: true, updatedAt: entry.updatedAt });
+    }
+
+    case 'content:set': {
+      if (account.role === 'user') return err(403, 'دسترسی مجاز نیست.');
+      const content = ctx.body.content;
+      const v = validateSiteContent(content);
+      if (!v.ok) return err(400, v.error ?? 'محتوای نامعتبر است.');
+      const file = await getContents();
+      const key = account.username.toLowerCase();
+      file.contents[key] = { updatedAt: new Date().toISOString(), content: content as Record<string, unknown> };
+      await saveContents(file);
+      return ok({ message: 'محتوا ذخیره شد. فقط کاربران ساخته‌شده توسط شما این نسخه را می‌بینند.', updatedAt: file.contents[key].updatedAt });
+    }
+
+    case 'content:reset': {
+      if (account.role === 'user') return err(403, 'دسترسی مجاز نیست.');
+      const file = await getContents();
+      const key = account.username.toLowerCase();
+      if (file.contents[key]) {
+        delete file.contents[key];
+        await saveContents(file);
+      }
+      return ok({ message: 'محتوا به نسخه پیش‌فرض برگشت.' });
+    }
+
     // ---------------- پایش پیشرفت کاربران (پنل ادمین) ----------------
     case 'users:progress': {
       if (account.role === 'user') return err(403, 'دسترسی مجاز نیست.');
@@ -800,13 +966,17 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       }>;
       for (const t of targets) {
         const data = await getUserData(t.username);
+        const ownerLower = t.role === 'user'
+          ? (t.createdBy ? t.createdBy.toLowerCase() : null)
+          : t.username.toLowerCase();
+        const keys = await taskKeysForOwnerLower(ownerLower);
         rows.push({
           username: t.username,
           email: t.email ?? null,
           role: t.role,
           createdAt: t.createdAt,
           active: t.active,
-          summary: progressSummary(data.progress ?? {}),
+          summary: progressSummary(data.progress ?? {}, keys),
         });
       }
       rows.sort((a, b) => a.username.localeCompare(b.username));
@@ -826,6 +996,10 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       )
         return err(403, 'ادمین فقط کاربران ساخته‌ی خودش را مشاهده می‌کند.');
       const data = await getUserData(target.username);
+      const ownerLower = target.role === 'user'
+        ? (target.createdBy ? target.createdBy.toLowerCase() : null)
+        : target.username.toLowerCase();
+      const keys = await taskKeysForOwnerLower(ownerLower);
       const { comments } = await getComments();
       let thread: Comment[] = [];
       if (target.role === 'user') {
@@ -848,7 +1022,7 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       return ok({
         user: publicAccount(target),
         progress: data.progress ?? {},
-        summary: progressSummary(data.progress ?? {}),
+        summary: progressSummary(data.progress ?? {}, keys),
         comments: thread,
       });
     }

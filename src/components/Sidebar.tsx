@@ -10,6 +10,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onLogout: () => void;
+  menuLabels?: Record<string, string>;
 }
 
 const NAV_ITEMS: Array<{ id: Route; label: string; adminOnly?: boolean }> = [
@@ -29,7 +30,8 @@ const ROLE_FA: Record<string, string> = {
   user: 'کاربر',
 };
 
-export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout }: Props) {
+export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout, menuLabels }: Props) {
+  const label = (id: Route) => menuLabels?.[id] ?? NAV_ITEMS.find((n) => n.id === id)?.label ?? id;
   const items = isAdmin
     ? NAV_ITEMS.filter((it) => it.adminOnly || it.id === 'chat')
     : NAV_ITEMS.filter((it) => !it.adminOnly);
@@ -56,7 +58,7 @@ export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, 
               onClose();
             }}
           >
-            <span>{it.label}</span>
+            <span>{label(it.id)}</span>
             {it.id === 'chat' && chatUnread > 0 && <span className="dot nav-unread-dot" aria-label="پیام خوانده‌نشده" />}
             {view === it.id && !(it.id === 'chat' && chatUnread > 0) && <span className="dot nav-num" aria-hidden="true" />}
           </button>

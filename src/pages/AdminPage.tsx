@@ -13,6 +13,7 @@ import {
 } from '../api';
 import type { CommentItem, PublicAccount, UserInspect, UserProgressRow } from '../types';
 import { ROLE_LABEL, TASK_KEYS, type Role } from '../types';
+import ContentEditor from '../components/ContentEditor';
 
 interface Props {
   account: PublicAccount;
@@ -111,6 +112,7 @@ export default function AdminPage({ account }: Props) {
       </header>
       <CreateUserForm account={account} />
       <ChangeOwnPassword />
+      <ContentEditor account={account} />
       <UsersProgressTable account={account} />
       <CommentInbox account={account} />
     </div>
@@ -600,22 +602,31 @@ function InspectModal({ username, onClose }: { username: string; onClose: () => 
             <div>
               <h4 className="mb-2 text-xs font-bold text-muted">وضعیت منابع هر فاز</h4>
               <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-line bg-bg p-3">
-                {ALL_PHASES.flatMap(([id]) => (TASK_KEYS[id] ?? []).map((k) => ({ id, k }))).map(({ id, k }) => {
-                  const done = data.progress[k] === true;
-                  return (
-                    <div key={k} className="flex items-center gap-2 text-xs leading-6">
-                      <span className={`inspect-status ${done ? 'is-seen' : ''}`}>
-                        {done ? 'مشاهده شد' : 'مشاهده نشده'}
-                      </span>
-                      <span className={done ? 'text-text' : 'text-muted'}>
-                        <span className="ms-1 rounded bg-raised px-1 py-0.5 text-[9px] font-bold text-muted">
-                          {PHASE_FA[ALL_PHASES.findIndex(([p]) => p === id)]!}
+                {(() => {
+                  const staticEntries = ALL_PHASES.flatMap(([id]) => (TASK_KEYS[id] ?? []).map((k) => ({ id, k })));
+                  const staticSet = new Set(staticEntries.map((e) => e.k));
+                  const customKeys = Object.keys(data.progress ?? {}).filter((k) => !staticSet.has(k));
+                  const all = [
+                    ...staticEntries,
+                    ...customKeys.map((k) => ({ id: 'phase-1' as const, k, custom: true })),
+                  ];
+                  return all.map(({ id, k }) => {
+                    const done = data.progress[k] === true;
+                    return (
+                      <div key={k} className="flex items-center gap-2 text-xs leading-6">
+                        <span className={`inspect-status ${done ? 'is-seen' : ''}`}>
+                          {done ? 'مشاهده شد' : 'مشاهده نشده'}
                         </span>
-                        {TASK_LABELS[k] ?? k}
-                      </span>
-                    </div>
-                  );
-                })}
+                        <span className={done ? 'text-text' : 'text-muted'}>
+                          <span className="ms-1 rounded bg-raised px-1 py-0.5 text-[9px] font-bold text-muted">
+                            {PHASE_FA[ALL_PHASES.findIndex(([p]) => p === id)]!}
+                          </span>
+                          {TASK_LABELS[k] ?? k}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
