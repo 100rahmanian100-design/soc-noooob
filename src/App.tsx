@@ -347,10 +347,6 @@ export default function App() {
             )}
           </div>
         </main>
-
-        <footer className="footnote" style={{ textAlign: 'center' }}>
-          SOC Noooob — راهنمای شروع به کار و دوره آزمایشی · شهریور – مهر ۱۴۰۵
-        </footer>
       </div>
     </div>
   );

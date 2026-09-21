@@ -74,11 +74,11 @@ export default function AuthPage({ account, onAuthed }: Props) {
           </div>
           <h2>SOC Noooob</h2>
           <p className="small" style={{ color: 'var(--ink)', opacity: 0.9, maxWidth: '38ch' }}>
-            راهنمای شروع به کار و دوره آزمایشی — ورود به سامانه
+            آکادمی آموزش امنیت سایبری — ورود به سامانه
           </p>
         </div>
         <p className="small" style={{ color: 'var(--ink)', opacity: 0.9, margin: 0 }}>
-          ثبت‌نام عمومی بسته است؛ حساب‌های کاربری توسط ادمین سیستم ساخته می‌شوند.
+          امنیت سایبری با آموزش شروع می‌شود؛ هر لاگ یک سرنخ است و هر هشدار، فرصتی برای دفاع.
         </p>
       </div>
 
