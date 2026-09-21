@@ -10,6 +10,7 @@ export const DEFAULT_CONTENT: SiteContent = {
     'phase-4': 'فاز ۴: Onboarding',
     appendix: 'پیوست ۱: مراجع SANS SEC450',
   },
+  pageOrder: ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix'],
   pages: {
     home: {
       headerTitle: 'میز کار',

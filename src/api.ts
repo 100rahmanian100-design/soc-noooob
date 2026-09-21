@@ -81,6 +81,9 @@ export const apiResetPassword = (username: string, newPassword: string) =>
 export const apiRenameUser = (username: string, newUsername: string) =>
   call<AccountInfo>('data', { action: 'users:rename', username, newUsername });
 
+export const apiRenameSelf = (newUsername: string) =>
+  call<AccountInfo>('data', { action: 'users:renameSelf', newUsername });
+
 export const apiUsersProgress = () =>
   call<{ rows: import('./types').UserProgressRow[] }>('data', { action: 'users:progress' });
 

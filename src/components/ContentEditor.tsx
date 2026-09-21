@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { apiGetContent, apiResetContent, apiSetContent } from '../api';
 import type { PublicAccount } from '../types';
-import type { ContentBlock, PageId, SiteContent } from '../contentTypes';
-import { newBlockId, newTaskKey, PAGE_IDS } from '../contentTypes';
+import type { ContentBlock, SiteContent } from '../contentTypes';
+import { isCustomPageId, makeCustomPageId, newBlockId, newTaskKey, normalizeContent } from '../contentTypes';
 import { DEFAULT_CONTENT } from '../defaultContent';
 import RichText from './RichText';
 
-const PAGE_TABS: Array<{ id: PageId | 'menus'; label: string }> = [
-  { id: 'menus', label: 'منوها' },
+const DEFAULT_TAB_META: Array<{ id: string; label: string }> = [
   { id: 'home', label: 'میز کار' },
   { id: 'phase-1', label: 'فاز ۱' },
   { id: 'phase-2', label: 'فاز ۲' },
@@ -40,7 +39,7 @@ const primaryBtn =
 
 export default function ContentEditor({ account }: { account: PublicAccount }) {
   const [content, setContent] = useState<SiteContent>(() => deepCopy(DEFAULT_CONTENT));
-  const [tab, setTab] = useState<PageId | 'menus'>('phase-1');
+  const [tab, setTab] = useState<string>('phase-1');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isCustom, setIsCustom] = useState(false);
@@ -54,17 +53,7 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
     apiGetContent()
       .then((res) => {
         if (res.content) {
-          const merged: SiteContent = {
-            menus: { ...DEFAULT_CONTENT.menus, ...(res.content.menus ?? {}) },
-            pages: deepCopy(DEFAULT_CONTENT.pages),
-          };
-          for (const pid of PAGE_IDS) {
-            const inc = (res.content.pages as Record<string, (typeof res.content.pages)[typeof pid]>)[pid];
-            if (inc && typeof inc === 'object' && Array.isArray((inc as { blocks?: unknown }).blocks)) {
-              merged.pages[pid] = inc as (typeof merged.pages)[typeof pid];
-            }
-          }
-          setContent(merged);
+          setContent(normalizeContent(res.content, DEFAULT_CONTENT));
           setIsCustom(!!res.isCustom);
           setUpdatedAt(res.updatedAt ?? null);
         } else {
@@ -77,6 +66,10 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
   }, []);
 
   const touch = (next: SiteContent) => {
+    // اگر تب فعلی حذف شده بود، برگرد به مدیریت منوها
+    if (tab !== 'menus' && !next.pages[tab]) {
+      setTab('menus');
+    }
     setContent(next);
     setDirty(true);
     setMessage('');
@@ -112,6 +105,7 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
     setIsCustom(false);
     setUpdatedAt(null);
     setDirty(false);
+    setTab('phase-1');
     setMessage(res.message ?? 'به نسخه پیش‌فرض برگشت.');
   };
 
@@ -119,7 +113,7 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
     if (tab === 'menus') return;
     const base: ContentBlock = makeEmptyBlock(type);
     const next = deepCopy(content);
-    next.pages[tab as PageId].blocks.push(base);
+    next.pages[tab].blocks.push(base);
     touch(next);
   };
 
@@ -131,6 +125,14 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
     );
   }
 
+  const tabs = [
+    { id: 'menus', label: '🗂 مدیریت منوها' },
+    ...content.pageOrder.map((id) => ({
+      id,
+      label: `${isCustomPageId(id) ? '✨ ' : ''}${DEFAULT_TAB_META.find((t) => t.id === id)?.label ?? content.menus[id] ?? id}`,
+    })),
+  ];
+
   return (
     <section className="rounded-2xl border border-line bg-surface p-5">
       <h2 className="mb-1 flex items-center gap-2 text-base font-bold">
@@ -141,7 +143,8 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
         {account.role === 'superadmin'
           ? 'به‌عنوان سوپر ادمین، این ویرایش‌ها فقط برای کاربرانی که مستقیماً توسط شما ساخته شده‌اند نمایش داده می‌شود.'
           : 'این ویرایش‌ها فقط برای کاربران ساخته‌شده توسط شما نمایش داده می‌شود؛ کاربران ادمین‌های دیگر آن را نمی‌بینند.'}{' '}
-        متن‌ها، لینک‌ها، جدول‌ها و بخش‌های غیرجدولی را می‌توانید کامل ویرایش کنید یا بسازید.
+        متن‌ها، لینک‌ها، جدول‌ها و بخش‌های غیرجدولی را می‌توانید کامل ویرایش کنید یا بسازید. از تب «مدیریت منوها»
+        می‌توانید منوی جدید اضافه کنید و بعد وارد همان منو شوید و آیتم‌هایش را بسازید.
       </p>
       <p className="mb-4 text-[11px] text-muted">
         وضعیت: {isCustom ? `نسخه اختصاصی شما${updatedAt ? ` · ${fmtDate(updatedAt)}` : ''}` : 'نسخه پیش‌فرض سیستم'}
@@ -152,7 +155,7 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
       {error && <p className="mb-3 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
 
       <div className="mb-4 flex flex-wrap gap-1.5">
-        {PAGE_TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -167,14 +170,11 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
       </div>
 
       {tab === 'menus' ? (
-        <MenusEditor content={content} onChange={touch} />
+        <MenusManager content={content} onChange={touch} onOpenPage={(id) => setTab(id)} />
+      ) : content.pages[tab] ? (
+        <PageEditor pageId={tab} content={content} onChange={touch} onAddBlock={addBlock} />
       ) : (
-        <PageEditor
-          pageId={tab as PageId}
-          content={content}
-          onChange={touch}
-          onAddBlock={addBlock}
-        />
+        <p className="empty">این صفحه وجود ندارد.</p>
       )}
 
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
@@ -195,10 +195,10 @@ export default function ContentEditor({ account }: { account: PublicAccount }) {
         محسوب می‌شود (با Enter جدا کنید).
       </p>
 
-      {preview && tab !== 'menus' && (
+      {preview && tab !== 'menus' && content.pages[tab] && (
         <PreviewModal
-          title={content.pages[tab as PageId].headerTitle}
-          blocks={content.pages[tab as PageId].blocks}
+          title={content.pages[tab].headerTitle}
+          blocks={content.pages[tab].blocks}
           onClose={() => setPreview(false)}
         />
       )}
@@ -248,28 +248,128 @@ function makeEmptyBlock(type: ContentBlock['type']): ContentBlock {
   }
 }
 
-/* ---------------- ویرایش منوها ---------------- */
+/* ---------------- مدیریت منوها: افزودن/حذف/ترتیب + ورود به منو ---------------- */
 
-function MenusEditor({ content, onChange }: { content: SiteContent; onChange: (c: SiteContent) => void }) {
+function MenusManager({
+  content,
+  onChange,
+  onOpenPage,
+}: {
+  content: SiteContent;
+  onChange: (c: SiteContent) => void;
+  onOpenPage: (id: string) => void;
+}) {
+  const [newLabel, setNewLabel] = useState('');
+
+  const move = (index: number, dir: -1 | 1) => {
+    const next = deepCopy(content);
+    const j = index + dir;
+    if (j < 0 || j >= next.pageOrder.length) return;
+    [next.pageOrder[index], next.pageOrder[j]] = [next.pageOrder[j], next.pageOrder[index]];
+    onChange(next);
+  };
+
+  const removeCustom = (id: string) => {
+    if (!isCustomPageId(id)) return;
+    if (!window.confirm(`منوی «${content.menus[id] ?? id}» و همه محتوای داخلش حذف شود؟`)) return;
+    const next = deepCopy(content);
+    next.pageOrder = next.pageOrder.filter((x) => x !== id);
+    delete next.pages[id];
+    delete next.menus[id];
+    onChange(next);
+  };
+
+  const addCustom = () => {
+    const label = newLabel.trim();
+    if (!label) return;
+    if (content.pageOrder.filter((x) => isCustomPageId(x)).length >= 20) {
+      window.alert('حداکثر ۲۰ منوی سفارشی می‌توانید بسازید.');
+      return;
+    }
+    const id = makeCustomPageId();
+    const next = deepCopy(content);
+    next.pageOrder.push(id);
+    next.menus[id] = label.slice(0, 80);
+    next.pages[id] = {
+      headerTitle: label.slice(0, 120),
+      headerKicker: '',
+      headerPill: '',
+      headerEmoji: '📄',
+      blocks: [
+        { id: newBlockId(), type: 'section-title', text: label.slice(0, 200) },
+        { id: newBlockId(), type: 'paragraph', text: 'محتوای این صفحه را از تب خودش ویرایش کنید…' },
+      ],
+    };
+    setNewLabel('');
+    onChange(next);
+    // بعد از ساخت، مستقیم برو توی همان منو تا آیتم‌هایش را بسازی
+    onOpenPage(id);
+  };
+
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {(Object.keys(DEFAULT_CONTENT.menus) as PageId[]).map((pid) => (
-        <label key={pid} className="block">
-          <span className="mb-1 block text-xs font-semibold text-muted">
-            {pid} <span className="font-normal opacity-70">(پیش‌فرض: {DEFAULT_CONTENT.menus[pid]})</span>
-          </span>
+    <div className="space-y-4">
+      <div>
+        <h3 className="mb-2 text-xs font-bold text-muted">ترتیب و نام منوها (سایدبار کاربران شما)</h3>
+        <div className="space-y-2">
+          {content.pageOrder.map((id, i) => (
+            <div key={id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-bg p-2">
+              <span className="flex gap-1">
+                <button type="button" className={miniBtn} onClick={() => move(i, -1)} disabled={i === 0} title="بالا">↑</button>
+                <button type="button" className={miniBtn} onClick={() => move(i, 1)} disabled={i === content.pageOrder.length - 1} title="پایین">↓</button>
+              </span>
+              <input
+                value={content.menus[id] ?? ''}
+                maxLength={80}
+                onChange={(e) => {
+                  const next = deepCopy(content);
+                  next.menus[id] = e.target.value;
+                  onChange(next);
+                }}
+                className={inputCls}
+                style={{ flex: '1 1 200px' }}
+              />
+              {isCustomPageId(id) ? (
+                <span className="flex gap-1">
+                  <button type="button" className={miniBtn} onClick={() => onOpenPage(id)}>
+                    ورود و ویرایش آیتم‌ها ←
+                  </button>
+                  <button type="button" className={miniBtn} onClick={() => removeCustom(id)}>
+                    حذف منو
+                  </button>
+                </span>
+              ) : (
+                <span className="rounded-md border border-line px-2 py-1 text-[10px] text-muted">صفحه اصلی</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-dashed border-line p-3">
+        <label className="block min-w-52 flex-1">
+          <span className="mb-1 block text-xs font-semibold text-muted">نام منوی جدید</span>
           <input
-            value={content.menus[pid] ?? ''}
+            value={newLabel}
             maxLength={80}
-            onChange={(e) => {
-              const next = deepCopy(content);
-              next.menus[pid] = e.target.value;
-              onChange(next);
+            onChange={(e) => setNewLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustom();
+              }
             }}
+            placeholder="مثلاً: آموزش Splunk پیشرفته"
             className={inputCls}
           />
         </label>
-      ))}
+        <button type="button" className={miniBtn} style={{ padding: '10px 16px' }} onClick={addCustom} disabled={!newLabel.trim()}>
+          + افزودن منو و ورود به آن
+        </button>
+      </div>
+      <p className="text-[11px] leading-5 text-muted">
+        صفحات اصلی (میز کار، فازها، پیوست) قابل حذف نیستند ولی نام و ترتیبشان قابل تغییر است. منوی جدید بعد از ذخیره،
+        در سایدبار کاربران شما ظاهر می‌شود.
+      </p>
     </div>
   );
 }
@@ -282,7 +382,7 @@ function PageEditor({
   onChange,
   onAddBlock,
 }: {
-  pageId: PageId;
+  pageId: string;
   content: SiteContent;
   onChange: (c: SiteContent) => void;
   onAddBlock: (t: ContentBlock['type']) => void;

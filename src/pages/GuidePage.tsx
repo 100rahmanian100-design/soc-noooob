@@ -4,15 +4,16 @@ import type { PublicAccount } from '../types';
 import CommentSection from '../components/CommentSection';
 import RichText, { SmartLink } from '../components/RichText';
 import type { ContentBlock, PageContent, PageId, SiteContent } from '../contentTypes';
-import { summarizeWithKeys, taskKeysOfContent } from '../contentTypes';
+import { isCustomPageId, normalizeContent, summarizeWithKeys, taskKeysOfContent } from '../contentTypes';
 import { DEFAULT_CONTENT } from '../defaultContent';
 
 export type GuideView = 'home' | 'phase-1' | 'phase-2' | 'phase-3' | 'phase-4' | 'appendix';
+export type AnyGuideView = GuideView | `custom-${string}`;
 
 interface Props {
   account: PublicAccount;
-  view: GuideView;
-  navigate: (v: GuideView) => void;
+  view: AnyGuideView;
+  navigate: (v: AnyGuideView) => void;
   focusCommentId?: string | null;
   focusNonce?: number;
 }
@@ -274,11 +275,11 @@ function PhaseNav({
   nextLabel,
   navigate,
 }: {
-  prev: GuideView;
+  prev: AnyGuideView;
   prevLabel: string;
-  next: GuideView;
+  next: AnyGuideView;
   nextLabel: string;
-  navigate: (v: GuideView) => void;
+  navigate: (v: AnyGuideView) => void;
 }) {
   return (
     <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
@@ -309,9 +310,11 @@ function HomeView({
   account: PublicAccount;
   content: SiteContent;
   summary: ReturnType<typeof summarizeWithKeys>;
-  navigate: (v: GuideView) => void;
+  navigate: (v: AnyGuideView) => void;
 }) {
   const page = content.pages.home;
+  const orderedPhases = PHASE_ORDER.filter((pid) => content.pages[pid]);
+  const customIds = (content.pageOrder ?? []).filter((id) => isCustomPageId(id) && content.pages[id]);
   return (
     <div className="space-y-5">
       <header className="rounded-2xl border border-line bg-surface p-6">
@@ -350,7 +353,7 @@ function HomeView({
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-2">
-          {PHASE_ORDER.map((pid) => {
+          {orderedPhases.map((pid) => {
             const s = summary.perPhase[pid] ?? { done: 0, total: 0, pct: 0 };
             const pg = content.pages[pid];
             return (
@@ -380,6 +383,43 @@ function HomeView({
             );
           })}
         </div>
+
+        {customIds.length > 0 && (
+          <div className="mt-5">
+            <h2 className="mb-2 text-sm font-extrabold text-accent">صفحات اضافه‌شده توسط ادمین شما</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {customIds.map((cid) => {
+                const pg = content.pages[cid];
+                const s = summary.perPhase[cid] ?? { done: 0, total: 0, pct: 0 };
+                return (
+                  <button
+                    key={cid}
+                    onClick={() => navigate(cid as AnyGuideView)}
+                    className="rounded-xl border border-line bg-bg p-4 text-start transition hover:border-accent/60 hover:bg-raised"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xl">{pg.headerEmoji || '📄'}</span>
+                      <span className="text-sm font-bold">{content.menus[cid] ?? pg.headerTitle}</span>
+                      {pg.headerPill && <span className="pill ms-auto">{pg.headerPill}</span>}
+                    </div>
+                    {s.total === 0 ? (
+                      <p className="mt-3 text-[11px] text-muted">{pg.blocks.length} بلوک آموزشی</p>
+                    ) : (
+                      <>
+                        <div className="mt-3">
+                          <ProgressBar pct={s.pct} />
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted">
+                          {s.done}/{s.total} منبع · {s.pct}٪
+                        </p>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 rounded-xl border border-accent/40 bg-accent/5 p-4">
           <h2 className="text-sm font-extrabold text-accent">پرونده پیشنهادی شما</h2>
@@ -549,24 +589,7 @@ export default function GuidePage({ account, view, navigate, focusCommentId, foc
   useEffect(() => {
     apiGetContent().then((res) => {
       if (res.content) {
-        // ادغام با پیش‌فرض برای مقاومت در برابر نسخه‌های قدیمی
-        const merged: SiteContent = {
-          menus: { ...DEFAULT_CONTENT.menus, ...(res.content.menus ?? {}) },
-          pages: { ...DEFAULT_CONTENT.pages },
-        };
-        for (const pid of Object.keys(DEFAULT_CONTENT.pages) as PageId[]) {
-          const incoming = (res.content.pages as Record<string, PageContent>)[pid];
-          if (incoming && typeof incoming === 'object' && Array.isArray(incoming.blocks)) {
-            merged.pages[pid] = {
-              headerTitle: incoming.headerTitle || DEFAULT_CONTENT.pages[pid].headerTitle,
-              headerKicker: incoming.headerKicker ?? DEFAULT_CONTENT.pages[pid].headerKicker,
-              headerPill: incoming.headerPill ?? DEFAULT_CONTENT.pages[pid].headerPill,
-              headerEmoji: incoming.headerEmoji ?? DEFAULT_CONTENT.pages[pid].headerEmoji,
-              blocks: incoming.blocks,
-            };
-          }
-        }
-        setContent(merged);
+        setContent(normalizeContent(res.content, DEFAULT_CONTENT));
         setIsCustom(!!res.isCustom);
       } else {
         setContent(DEFAULT_CONTENT);
@@ -628,10 +651,66 @@ export default function GuidePage({ account, view, navigate, focusCommentId, foc
     );
   }
 
-  const order: GuideView[] = ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix'];
+  const order: AnyGuideView[] = [
+    'home',
+    'phase-1',
+    'phase-2',
+    'phase-3',
+    'phase-4',
+    'appendix',
+    ...((content.pageOrder ?? []).filter((id) => isCustomPageId(id)) as AnyGuideView[]),
+  ];
   const idx = order.indexOf(view);
-  const page = content.pages[view as PageId];
-  if (!page) return null;
+  const page = content.pages[view];
+  if (!page) {
+    return (
+      <div className="space-y-5">
+        <section className={WRAP}>
+          <H3>صفحه پیدا نشد</H3>
+          <P>این صفحه توسط ادمین شما حذف شده است.</P>
+          <button
+            onClick={() => navigate('home')}
+            className="mt-3 rounded-lg border-0 bg-accent px-5 py-2 text-sm font-extrabold text-ink transition hover:opacity-90"
+          >
+            بازگشت به میز کار ←
+          </button>
+        </section>
+      </div>
+    );
+  }
+  // صفحات سفارشی ادمین: هدر + بلوک‌ها + گفت‌وگو، بدون ناوبری فاز
+  if (isCustomPageId(view)) {
+    const pct = summary.perPhase[view]?.pct;
+    const showPct = typeof pct === 'number' && (keysByPhase[view]?.length ?? 0) > 0;
+    return (
+      <div className="space-y-5">
+        {isCustom && (
+          <p className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-[11px] text-muted">
+            محتوای اختصاصی ادمین شما نمایش داده می‌شود.
+          </p>
+        )}
+        <PhaseHeader page={page} phaseId={view} pct={showPct ? (pct as number) : -1} />
+        <PhaseBody
+          account={account}
+          content={content}
+          page={page}
+          progress={progress}
+          markRowsSeen={markRowsSeen}
+          focusCommentId={focusCommentId}
+          focusNonce={focusNonce}
+          phaseId={view}
+        />
+        <div className="flex justify-start border-t border-line pt-5">
+          <button
+            onClick={() => navigate('home')}
+            className="rounded-lg border border-line bg-raised px-4 py-2 text-sm font-semibold text-muted transition hover:text-accent"
+          >
+            → بازگشت به میز کار
+          </button>
+        </div>
+      </div>
+    );
+  }
   const pct = summary.perPhase[view]?.pct;
   const showPct = typeof pct === 'number' && (keysByPhase[view]?.length ?? 0) > 0;
   const prev = order[Math.max(0, idx - 1)];

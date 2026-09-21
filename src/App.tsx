@@ -9,9 +9,14 @@ import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 
 /** مسیریابی hash — بدون وابستگی بیرونی */
-export type Route = 'auth' | 'admin' | 'chat' | GuideView;
+export type CustomPageRoute = `custom-${string}`;
+export type Route = 'auth' | 'admin' | 'chat' | GuideView | CustomPageRoute;
 
 const VALID_VIEWS: Route[] = ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix', 'admin', 'chat', 'auth'];
+
+function isCustomRoute(base: string): base is CustomPageRoute {
+  return /^custom-[a-z0-9-]{1,32}$/.test(base);
+}
 
 /** پارس هش: #/phase-2?c=<commentId> */
 function parseHash(): { route: Route; focusCommentId: string | null; chatUser: string | null } {
@@ -26,7 +31,8 @@ function parseHash(): { route: Route; focusCommentId: string | null; chatUser: s
     chatUser = query.get('u');
   }
   const base = raw || 'home';
-  const route: Route = (VALID_VIEWS as string[]).includes(base) ? (base as Route) : 'home';
+  const route: Route =
+    (VALID_VIEWS as string[]).includes(base) || isCustomRoute(base) ? (base as Route) : 'home';
   return { route, focusCommentId, chatUser };
 }
 
@@ -41,6 +47,7 @@ export default function App() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuLabels, setMenuLabels] = useState<Record<string, string> | undefined>(undefined);
+  const [navOrder, setNavOrder] = useState<string[] | undefined>(undefined);
   const notificationRequest = useRef<Promise<void> | null>(null);
   const lastNotificationLoadAt = useRef(0);
 
@@ -70,10 +77,16 @@ export default function App() {
   useEffect(() => {
     if (!account || account.role !== 'user') {
       setMenuLabels(undefined);
+      setNavOrder(undefined);
       return;
     }
     apiGetContent().then((res) => {
-      if (res.content?.menus) setMenuLabels(res.content.menus as Record<string, string>);
+      if (res.content) {
+        if (res.content.menus) setMenuLabels(res.content.menus as Record<string, string>);
+        if (Array.isArray((res.content as { pageOrder?: unknown }).pageOrder)) {
+          setNavOrder((res.content as { pageOrder: string[] }).pageOrder);
+        }
+      }
     });
   }, [account]);
 
@@ -195,7 +208,9 @@ export default function App() {
       : route;
   const showAdmin = effectiveRoute === 'admin' && isAdmin;
   const showChat = effectiveRoute === 'chat';
-  const guideView: GuideView = (effectiveRoute as GuideView) ?? 'home';
+  // صفحات سفارشی ادمین هم مثل صفحات راهنما رندر می‌شوند
+  const guideView: GuideView | CustomPageRoute = (effectiveRoute as GuideView | CustomPageRoute) ?? 'home';
+  const customTitle = isCustomRoute(effectiveRoute) ? (menuLabels?.[effectiveRoute] ?? 'صفحه آموزشی') : undefined;
 
   return (
     <div className="min-h-screen">
@@ -209,6 +224,7 @@ export default function App() {
         onClose={() => setMenuOpen(false)}
         onLogout={() => void onLogout()}
         menuLabels={menuLabels}
+        navOrder={navOrder}
       />
 
       {/* شل — مطابق سیستم مرجع: .shell + .topbar + .content */}
@@ -224,12 +240,13 @@ export default function App() {
           unread={unreadNotifications}
           onRefreshNotifications={loadNotifications}
           onMarkAllNotificationsRead={markAllNotificationsRead}
+          customTitle={customTitle}
         />
 
         <main className="content">
           <div key={effectiveRoute} className="view-enter fade">
             {showAdmin ? (
-              <AdminPage account={account} />
+              <AdminPage account={account} onAccountChange={setAccount} />
             ) : showChat ? (
               <ChatPage account={account} focusUser={chatUser} />
             ) : (

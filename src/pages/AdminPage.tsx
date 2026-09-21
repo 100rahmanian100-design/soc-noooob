@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   apiCreateUser,
   apiChangePassword,
+  apiGetContent,
   apiInspectUser,
   apiListComments,
   apiListNotifications,
+  apiMe,
   apiPostComment,
+  apiRenameSelf,
   apiResetPassword,
   apiRenameUser,
   apiSetUserStatus,
@@ -17,7 +20,10 @@ import ContentEditor from '../components/ContentEditor';
 
 interface Props {
   account: PublicAccount;
+  onAccountChange: (a: PublicAccount) => void;
 }
+
+type AdminTab = 'dashboard' | 'users' | 'inbox' | 'content' | 'profile';
 
 const ALL_PHASES = [
   ['phase-1', 'فاز ۱ — SIEM'],
@@ -98,9 +104,35 @@ function MiniBar({ pct, small = false }: { pct: number; small?: boolean }) {
   );
 }
 
-export default function AdminPage({ account }: Props) {
+export default function AdminPage({ account, onAccountChange }: Props) {
+  const [tab, setTab] = useState<AdminTab>('dashboard');
+  const [userCount, setUserCount] = useState<number | null>(null);
+  const [inboxUnread, setInboxUnread] = useState(0);
+
+  const loadBadges = useCallback(async () => {
+    try {
+      const [usersRes, notifRes] = await Promise.all([apiUsersProgress(), apiListNotifications()]);
+      const rows = usersRes.rows ?? [];
+      setUserCount(rows.filter((r) => r.role === 'user').length);
+      const byActor = (notifRes as { unreadByActorPhase?: Record<string, number> }).unreadByActorPhase ?? {};
+      setInboxUnread(Object.values(byActor).reduce((s, n) => s + (n ?? 0), 0));
+    } catch {
+      /* badgeها اختیاری‌اند */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadBadges();
+    window.addEventListener('users-changed', loadBadges);
+    window.addEventListener('notifications-updated', loadBadges);
+    return () => {
+      window.removeEventListener('users-changed', loadBadges);
+      window.removeEventListener('notifications-updated', loadBadges);
+    };
+  }, [loadBadges]);
+
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <header>
         <p className="text-xs font-bold tracking-widest text-accent">ADMIN MONITORING</p>
         <h1 className="mt-1 text-2xl font-extrabold">پنل مدیریت و پایش پیشرفت</h1>
@@ -110,11 +142,195 @@ export default function AdminPage({ account }: Props) {
             : 'به‌عنوان ادمین می‌توانید کاربران ساخته‌ی خودتان را ببینید، کاربر عادی بسازید و به پیام‌های آنها پاسخ دهید.'}
         </p>
       </header>
-      <CreateUserForm account={account} />
+
+      <div className="admin-tabs" role="tablist" aria-label="بخش‌های پنل مدیریت">
+        <button type="button" role="tab" aria-selected={tab === 'dashboard'} className={tab === 'dashboard' ? 'active' : undefined} onClick={() => setTab('dashboard')}>
+          📊 داشبورد
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'users'} className={tab === 'users' ? 'active' : undefined} onClick={() => setTab('users')}>
+          👥 کاربران
+          {userCount !== null && userCount > 0 && <span className="tab-badge">{userCount.toLocaleString('fa-IR')}</span>}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'inbox'} className={tab === 'inbox' ? 'active' : undefined} onClick={() => setTab('inbox')}>
+          📥 صندوق پیام‌ها
+          {inboxUnread > 0 && <span className="tab-badge">{inboxUnread.toLocaleString('fa-IR')}</span>}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'content'} className={tab === 'content' ? 'active' : undefined} onClick={() => setTab('content')}>
+          ✏️ منوها و محتوا
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'profile'} className={tab === 'profile' ? 'active' : undefined} onClick={() => setTab('profile')}>
+          👤 پروفایل
+        </button>
+      </div>
+
+      {tab === 'dashboard' && <AdminDashboard account={account} go={setTab} />}
+      {tab === 'users' && (
+        <div className="space-y-7">
+          <CreateUserForm account={account} />
+          <UsersProgressTable account={account} />
+        </div>
+      )}
+      {tab === 'inbox' && <CommentInbox account={account} />}
+      {tab === 'content' && <ContentEditor account={account} />}
+      {tab === 'profile' && <ProfileSection account={account} onAccountChange={onAccountChange} />}
+    </div>
+  );
+}
+
+/* ------------------------------------------------ داشبورد */
+function AdminDashboard({ account, go }: { account: PublicAccount; go: (t: AdminTab) => void }) {
+  const [rows, setRows] = useState<UserProgressRow[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [contentState, setContentState] = useState<string>('…');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([apiUsersProgress(), apiListNotifications(), apiGetContent()])
+      .then(([u, n, c]) => {
+        setRows(u.rows ?? []);
+        const byActor = (n as { unreadByActorPhase?: Record<string, number> }).unreadByActorPhase ?? {};
+        setUnread(Object.values(byActor).reduce((s, v) => s + (v ?? 0), 0));
+        setContentState(c.isCustom ? 'اختصاصی شما' : 'پیش‌فرض سیستم');
+      })
+      .catch(() => undefined)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const users = rows.filter((r) => r.role === 'user');
+  const active = users.filter((r) => r.active).length;
+  const avg = users.length === 0 ? 0 : Math.round(users.reduce((s, r) => s + r.summary.total.pct, 0) / users.length);
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-4 flex items-center gap-2 text-base font-bold">
+          <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+          نمای کلی
+        </h2>
+        {loading ? (
+          <p className="text-sm text-muted">در حال بارگذاری…</p>
+        ) : (
+          <div className="stat-grid">
+            <div className="stat-card">
+              <b>{users.length.toLocaleString('fa-IR')}</b>
+              <span>کاربران {account.role === 'superadmin' ? '(همه)' : '(ساخته‌ی شما)'}</span>
+            </div>
+            <div className="stat-card">
+              <b>{active.toLocaleString('fa-IR')}</b>
+              <span>حساب فعال</span>
+            </div>
+            <div className="stat-card">
+              <b className="text-accent">{avg.toLocaleString('fa-IR')}٪</b>
+              <span>میانگین پیشرفت کاربران</span>
+            </div>
+            <div className="stat-card">
+              <b>{unread.toLocaleString('fa-IR')}</b>
+              <span>پیام جدید پاسخ‌داده‌نشده</span>
+            </div>
+            <div className="stat-card">
+              <b style={{ fontSize: 16 }}>{contentState}</b>
+              <span>وضعیت محتوای آموزشی شما</span>
+            </div>
+          </div>
+        )}
+        <div className="quick-actions mt-4">
+          <button type="button" className="rounded-lg border border-line px-4 py-2 transition hover:bg-raised" onClick={() => go('users')}>
+            مدیریت کاربران ←
+          </button>
+          <button type="button" className="rounded-lg border border-line px-4 py-2 transition hover:bg-raised" onClick={() => go('inbox')}>
+            پاسخ به پیام‌ها ←
+          </button>
+          <button type="button" className="rounded-lg border border-line px-4 py-2 transition hover:bg-raised" onClick={() => go('content')}>
+            ویرایش منوها و محتوا ←
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ------------------------------------------------ پروفایل (نام کاربری + رمز عبور) */
+function ProfileSection({ account, onAccountChange }: { account: PublicAccount; onAccountChange: (a: PublicAccount) => void }) {
+  const [newUsername, setNewUsername] = useState(account.username);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => setNewUsername(account.username), [account.username]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage('');
+    setError('');
+    const next = newUsername.trim();
+    if (!next || next.toLowerCase() === account.username.toLowerCase()) {
+      setError('نام کاربری جدید با نام فعلی فرقی ندارد.');
+      return;
+    }
+    if (!window.confirm(`نام کاربری شما به «${next}» تغییر کند؟ کاربران و محتوای شما منتقل می‌شوند.`)) return;
+    setBusy(true);
+    try {
+      const res = await apiRenameSelf(next);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        // نشست با کوکی جدید تمدید شد؛ حساب تازه را بخوان
+        const me = await apiMe();
+        if (me.account) onAccountChange(me.account);
+        setMessage(res.message ?? 'نام کاربری تغییر کرد.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-7">
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-4 flex items-center gap-2 text-base font-bold">
+          <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+          مشخصات حساب
+        </h2>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-md border border-line bg-raised px-2 py-1">نام کاربری: <b dir="ltr">{account.username}</b></span>
+          <span className="rounded-md border border-line bg-raised px-2 py-1">نقش: {ROLE_LABEL[account.role]}</span>
+          {account.email && <span className="rounded-md border border-line bg-raised px-2 py-1" dir="ltr">{account.email}</span>}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-1 flex items-center gap-2 text-base font-bold">
+          <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+          تغییر نام کاربری
+        </h2>
+        <p className="mb-4 text-xs text-muted">
+          فقط حروف لاتین، عدد، نقطه، خط تیره یا زیرخط (۳ تا ۳۲ نویسه). کاربران ساخته‌ی شما، پیام‌ها و محتوای اختصاصی‌تان به نام جدید منتقل می‌شود.
+        </p>
+        {message && <p className="mb-3 rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-xs text-ok">{message}</p>}
+        {error && <p className="mb-3 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
+        <form onSubmit={submit} autoComplete="off" className="flex flex-wrap items-end gap-3">
+          <label className="block min-w-52 flex-1">
+            <span className="mb-1 block text-xs font-semibold text-muted">نام کاربری جدید</span>
+            <input
+              dir="ltr"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              pattern="[A-Za-z0-9._-]{3,32}"
+              required
+              className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-lg border-0 bg-accent px-5 py-2.5 font-bold text-ink transition hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? 'در حال ذخیره…' : 'ذخیره نام کاربری'}
+          </button>
+        </form>
+      </section>
+
       <ChangeOwnPassword />
-      <ContentEditor account={account} />
-      <UsersProgressTable account={account} />
-      <CommentInbox account={account} />
     </div>
   );
 }
@@ -231,6 +447,7 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
   const [rows, setRows] = useState<UserProgressRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [inspectUser, setInspectUser] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -248,6 +465,14 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
     return () => window.removeEventListener('users-changed', refresh);
   }, [load]);
 
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) => r.username.toLowerCase().includes(q) || (r.email ?? '').toLowerCase().includes(q),
+    );
+  }, [rows, query]);
+
   return (
     <section className="rounded-2xl border border-line bg-surface p-5">
       <h2 className="mb-1 flex items-center gap-2 text-base font-bold">
@@ -256,7 +481,16 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
       </h2>
       <p className="mb-4 text-xs text-muted">
         درصد پیشرفت هر کاربر در فازهای ۱ تا ۳ بر اساس منابع مشاهده‌شده به‌صورت زنده به‌روزرسانی می‌شود.
+        ستون «کل دوره» شامل صفحات سفارشی شما هم می‌شود.
       </p>
+      <div className="mb-3">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="جست‌وجوی نام کاربری یا ایمیل…"
+          className="w-full max-w-sm rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent"
+        />
+      </div>
 
       {inspectUser && (
         <InspectModal username={inspectUser} onClose={() => setInspectUser(null)} />
@@ -264,8 +498,8 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
 
       {loading ? (
         <p className="text-sm text-muted">در حال بارگذاری…</p>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-muted">هنوز کاربری برای پایش وجود ندارد.</p>
+      ) : filteredRows.length === 0 ? (
+        <p className="text-sm text-muted">{rows.length === 0 ? 'هنوز کاربری برای پایش وجود ندارد.' : 'کاربری با این جست‌وجو پیدا نشد.'}</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-line">
           <table className="w-full text-sm">
@@ -284,7 +518,7 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {filteredRows.map((r) => {
                 const per = PROGRESS_PHASES.map(([id]) => r.summary.perPhase[id]?.pct ?? 0);
                 return (
                   <tr key={r.username} className="border-t border-line align-middle">

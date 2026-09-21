@@ -11,6 +11,8 @@ interface Props {
   onClose: () => void;
   onLogout: () => void;
   menuLabels?: Record<string, string>;
+  /** ترتیب منوهای سفارشی ادمین (فقط کاربران) */
+  navOrder?: string[];
 }
 
 const NAV_ITEMS: Array<{ id: Route; label: string; adminOnly?: boolean }> = [
@@ -30,61 +32,80 @@ const ROLE_FA: Record<string, string> = {
   user: 'کاربر',
 };
 
-export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout, menuLabels }: Props) {
-  const label = (id: Route) => menuLabels?.[id] ?? NAV_ITEMS.find((n) => n.id === id)?.label ?? id;
-  const items = isAdmin
+export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout, menuLabels, navOrder }: Props) {
+  const label = (id: string) =>
+    menuLabels?.[id] ?? NAV_ITEMS.find((n) => n.id === id)?.label ?? id;
+
+  const items: Array<{ id: Route; label: string; adminOnly?: boolean }> = isAdmin
     ? NAV_ITEMS.filter((it) => it.adminOnly || it.id === 'chat')
-    : NAV_ITEMS.filter((it) => !it.adminOnly);
+    : navOrder && navOrder.length > 0
+      ? [
+          ...navOrder.map((id) => ({ id: id as Route, label: label(id) })),
+          { id: 'chat' as Route, label: label('chat') === 'chat' ? 'گفت‌وگو' : label('chat') },
+        ]
+      : NAV_ITEMS.filter((it) => !it.adminOnly);
 
   return (
-    <aside className={`sidebar${open ? ' open' : ''}`} aria-label="ناوبری اصلی">
-      {/* برند — SOC Noooob */}
-      <div className="brand">
-        <div className="brand-mark">S</div>
-        <div>
-          <b>SOC NOOOOB</b>
-          <small>ACADEMY</small>
-        </div>
-      </div>
-
-      <div className="nav-label">{isAdmin ? 'مدیریت سیستم' : 'دوره آزمایشی'}</div>
-      <nav className="nav">
-        {items.map((it) => (
-          <button
-            key={it.id}
-            className={view === it.id ? 'active' : undefined}
-            onClick={() => {
-              navigate(it.id);
-              onClose();
-            }}
-          >
-            <span>{label(it.id)}</span>
-            {it.id === 'chat' && chatUnread > 0 && <span className="dot nav-unread-dot" aria-label="پیام خوانده‌نشده" />}
-            {view === it.id && !(it.id === 'chat' && chatUnread > 0) && <span className="dot nav-num" aria-hidden="true" />}
-          </button>
-        ))}
-      </nav>
-
-      <div className="side-bottom">
-        <div className="identity">
-          <span className="avatar" aria-hidden="true">
-            {(account.username || '?').slice(0, 1).toUpperCase()}
-          </span>
-          <div className="small" style={{ minWidth: 0 }}>
-            <b dir="ltr" style={{ display: 'block', overflowWrap: 'anywhere' }}>
-              {account.username}
-            </b>
-            <span className="muted">{ROLE_FA[account.role] ?? 'کاربر'}</span>
+    <>
+      {/* لایه تیره پشت منو در موبایل — کلیک = بستن منو */}
+      {open && <div className="sidebar-overlay" onClick={onClose} aria-hidden="true" />}
+      <aside className={`sidebar${open ? ' open' : ''}`} aria-label="ناوبری اصلی">
+        {/* برند — SOC Noooob + دکمه بستن (فقط موبایل) */}
+        <div className="brand">
+          <div className="brand-mark">S</div>
+          <div>
+            <b>SOC NOOOOB</b>
+            <small>ACADEMY</small>
           </div>
+          <button
+            type="button"
+            className="sidebar-close"
+            onClick={onClose}
+            aria-label="بستن منو"
+          >
+            ✕
+          </button>
         </div>
-        <button
-          className="plain muted"
-          style={{ width: '100%', marginTop: 12 }}
-          onClick={onLogout}
-        >
-          خروج از حساب
-        </button>
-      </div>
-    </aside>
+
+        <div className="nav-label">{isAdmin ? 'مدیریت سیستم' : 'دوره آزمایشی'}</div>
+        <nav className="nav">
+          {items.map((it) => (
+            <button
+              key={it.id}
+              className={view === it.id ? 'active' : undefined}
+              onClick={() => {
+                navigate(it.id);
+                onClose();
+              }}
+            >
+              <span>{it.label}</span>
+              {it.id === 'chat' && chatUnread > 0 && <span className="dot nav-unread-dot" aria-label="پیام خوانده‌نشده" />}
+              {view === it.id && !(it.id === 'chat' && chatUnread > 0) && <span className="dot nav-num" aria-hidden="true" />}
+            </button>
+          ))}
+        </nav>
+
+        <div className="side-bottom">
+          <div className="identity">
+            <span className="avatar" aria-hidden="true">
+              {(account.username || '?').slice(0, 1).toUpperCase()}
+            </span>
+            <div className="small" style={{ minWidth: 0 }}>
+              <b dir="ltr" style={{ display: 'block', overflowWrap: 'anywhere' }}>
+                {account.username}
+              </b>
+              <span className="muted">{ROLE_FA[account.role] ?? 'کاربر'}</span>
+            </div>
+          </div>
+          <button
+            className="plain muted"
+            style={{ width: '100%', marginTop: 12 }}
+            onClick={onLogout}
+          >
+            خروج از حساب
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

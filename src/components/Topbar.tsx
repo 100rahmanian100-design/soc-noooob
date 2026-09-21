@@ -14,6 +14,8 @@ interface Props {
   unread: number;
   onRefreshNotifications: (force?: boolean) => Promise<void | undefined>;
   onMarkAllNotificationsRead: () => Promise<void>;
+  /** عنوان صفحات سفارشی ادمین */
+  customTitle?: string;
 }
 
 const VIEW_TITLES: Record<string, string> = {
@@ -41,7 +43,7 @@ function fmtRelative(iso: string): string {
   }
 }
 
-export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment, onOpenChat, notifications, unread, onRefreshNotifications, onMarkAllNotificationsRead }: Props) {
+export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment, onOpenChat, notifications, unread, onRefreshNotifications, onMarkAllNotificationsRead, customTitle }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -82,7 +84,7 @@ export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenCo
     <header className="topbar">
       {/* بردکرامب — مطابق سیستم مرجع */}
       <div className="breadcrumb">
-        <span style={{ color: 'var(--text)', fontWeight: 600 }}>{VIEW_TITLES[view] ?? 'راهنما'}</span>
+        <span style={{ color: 'var(--text)', fontWeight: 600 }}>{customTitle ?? VIEW_TITLES[view] ?? 'راهنما'}</span>
       </div>
       <div className="top-tools">
         {/* منوی موبایل — فقط در نمایش ≤۸۰۰px دیده می‌شود (کلاس مرجع) */}

@@ -173,15 +173,19 @@ function contentOwnerOf(account: Account): string | null {
   return account.username.toLowerCase();
 }
 
-/** استخراج taskKeyها از محتوای ذخیره‌شده (ساختار دیتا-محور فرانت) */
+/** استخراج taskKeyها از محتوای ذخیره‌شده (ساختار دیتا-محور فرانت — شامل صفحات سفارشی) */
 function taskKeysFromStored(stored: unknown): Record<string, string[]> | null {
   try {
     const c = stored as {
       pages?: Record<string, { blocks?: Array<{ type?: string; rows?: Array<{ taskKeys?: unknown }> }> }>;
+      pageOrder?: unknown;
     };
     if (!c || typeof c !== 'object' || !c.pages) return null;
+    const ids = Array.isArray(c.pageOrder) && c.pageOrder.length > 0
+      ? (c.pageOrder as unknown[]).filter((x): x is string => typeof x === 'string')
+      : Object.keys(c.pages);
     const out: Record<string, string[]> = {};
-    for (const pid of ['phase-1', 'phase-2', 'phase-3', 'phase-4']) {
+    for (const pid of ids) {
       const keys: string[] = [];
       for (const b of c.pages[pid]?.blocks ?? []) {
         if (b && b.type === 'resource-table' && Array.isArray(b.rows)) {
@@ -214,18 +218,41 @@ async function taskKeysForOwnerLower(ownerLower: string | null): Promise<Record<
 
 /** اعتبارسنجی سبک محتوای ارسالی ادمین — جلوگیری از داده خراب/خیلی بزرگ */
 function validateSiteContent(raw: unknown): { ok: boolean; error?: string } {
+  const DEFAULT_IDS = ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix'];
+  const isCustomId = (id: string) => /^custom-[a-z0-9-]{1,32}$/.test(id);
+  const isPageId = (id: string) => DEFAULT_IDS.includes(id) || isCustomId(id);
   try {
     const c = raw as {
       menus?: Record<string, unknown>;
       pages?: Record<string, { headerTitle?: unknown; blocks?: unknown }>;
+      pageOrder?: unknown;
     };
     if (!c || typeof c !== 'object') return { ok: false, error: 'ساختار محتوا نامعتبر است.' };
     const json = JSON.stringify(c);
     if (json.length > 220_000) return { ok: false, error: 'حجم محتوا بیش از حد مجاز است.' };
-    const pageIds = ['home', 'phase-1', 'phase-2', 'phase-3', 'phase-4', 'appendix'];
     if (!c.menus || typeof c.menus !== 'object') return { ok: false, error: 'منوها یافت نشد.' };
     if (!c.pages || typeof c.pages !== 'object') return { ok: false, error: 'صفحات یافت نشد.' };
-    for (const pid of pageIds) {
+    // pageOrder اختیاری است (سازگاری با نسخه قدیمی) ولی اگر آمد باید معتبر باشد
+    let order: string[];
+    if (typeof c.pageOrder === 'undefined') {
+      order = DEFAULT_IDS;
+    } else {
+      if (!Array.isArray(c.pageOrder)) return { ok: false, error: 'ترتیب منوها نامعتبر است.' };
+      order = c.pageOrder as string[];
+      if (order.length === 0 || order.length > 26) return { ok: false, error: 'تعداد منوها باید بین ۱ تا ۲۶ باشد.' };
+      const seen = new Set<string>();
+      for (const id of order) {
+        if (typeof id !== 'string' || !isPageId(id)) return { ok: false, error: `شناسه منو «${String(id)}» نامعتبر است.` };
+        if (seen.has(id)) return { ok: false, error: 'منوی تکراری در ترتیب منوها وجود دارد.' };
+        seen.add(id);
+      }
+      for (const id of DEFAULT_IDS) {
+        if (!seen.has(id)) return { ok: false, error: `صفحه اصلی «${id}» نباید حذف شود.` };
+      }
+    }
+    const customCount = order.filter((id) => isCustomId(id)).length;
+    if (customCount > 20) return { ok: false, error: 'حداکثر ۲۰ منوی سفارشی می‌توانید بسازید.' };
+    for (const pid of order) {
       const menu = c.menus[pid];
       if (typeof menu !== 'string' || menu.trim().length === 0 || menu.length > 80)
         return { ok: false, error: `لیبل منوی «${pid}» باید بین ۱ تا ۸۰ نویسه باشد.` };
@@ -909,6 +936,69 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
       target.username = newUsername;
       await saveAccounts(accountsFile);
       return ok({ account: publicAccount(target), message: `نام کاربری به «${newUsername}» تغییر کرد.` });
+    }
+
+    case 'users:renameSelf': {
+      // تغییر نام کاربری حساب جاری (ادمین/سوپرادمین در صفحه پروفایل)
+      const newUsername = str(ctx.body.newUsername);
+      if (!/^[a-zA-Z0-9._-]{3,32}$/.test(newUsername))
+        return err(400, 'نام کاربری باید ۳ تا ۳۲ نویسه و فقط شامل حروف لاتین، عدد، نقطه، خط تیره یا زیرخط باشد.');
+      const oldUsername = account.username;
+      const oldKey = oldUsername.toLowerCase();
+      if (newUsername.toLowerCase() === oldKey)
+        return ok({ account: publicAccount(account), message: 'نام کاربری تغییری نکرد.' });
+
+      const accountsFile = await getAccounts();
+      if (accountsFile.accounts.some((a) => a.username.toLowerCase() === newUsername.toLowerCase()))
+        return err(409, 'این نام کاربری قبلاً استفاده شده است.');
+      const target = accountsFile.accounts.find((a) => a.username === account.username)!;
+
+      // همه ارجاع‌ها به نام قبلی منتقل می‌شود تا مالکیت کاربران، پیام‌ها و محتوای اختصاصی حفظ شود
+      for (const a of accountsFile.accounts) {
+        if (a.createdBy?.toLowerCase() === oldKey) a.createdBy = newUsername;
+      }
+      target.username = newUsername;
+      await saveAccounts(accountsFile);
+
+      const userData = await getUserData(oldUsername);
+      userData.username = newUsername;
+      await saveUserData(userData);
+
+      const commentsFile = await getComments();
+      for (const comment of commentsFile.comments) {
+        if (comment.author.toLowerCase() === oldKey) comment.author = newUsername;
+        if (comment.targetAdmin?.toLowerCase() === oldKey) comment.targetAdmin = newUsername;
+        if (comment.targetUser?.toLowerCase() === oldKey) comment.targetUser = newUsername;
+      }
+      await saveComments(commentsFile);
+
+      const notificationsFile = await getNotifications();
+      for (const notification of notificationsFile.notifications) {
+        if (notification.user.toLowerCase() === oldKey) notification.user = newUsername;
+        if (notification.actor.toLowerCase() === oldKey) notification.actor = newUsername;
+      }
+      await saveNotifications(notificationsFile);
+
+      const chatFile = await getChat();
+      for (const message of chatFile.messages) {
+        if (message.sender.toLowerCase() === oldKey) message.sender = newUsername;
+        if (message.recipient.toLowerCase() === oldKey) message.recipient = newUsername;
+      }
+      await saveChat(chatFile);
+
+      const contentsFile = await getContents();
+      const entry = contentsFile.contents[oldKey];
+      if (entry) {
+        contentsFile.contents[newUsername.toLowerCase()] = entry;
+        delete contentsFile.contents[oldKey];
+        await saveContents(contentsFile);
+      }
+
+      // نشست جدید برای نام جدید تا کاربر لاگین بماند
+      return {
+        ...ok({ account: publicAccount(target), message: `نام کاربری به «${newUsername}» تغییر کرد.` }),
+        setCookie: sessionCookie(signSession(newUsername)),
+      };
     }
 
     // ---------------- محتوای آموزشی per-admin ----------------

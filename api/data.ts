@@ -16,6 +16,10 @@ function parseCookies(header: string | undefined): Record<string, string> {
   return out;
 }
 
+function cookieHeader(name: string, value: string, maxAge: number, secure: boolean): string {
+  return `${name}=${encodeURIComponent(value)}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'فقط POST مجاز است.' });
@@ -28,6 +32,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       isSecure: process.env.VERCEL === '1',
     };
     const result: ApiResult = await handleData(ctx);
+    const secure = process.env.VERCEL === '1';
+    if (result.setCookie) {
+      const { name, value, maxAge } = result.setCookie;
+      res.setHeader('Set-Cookie', cookieHeader(name, value, maxAge, secure));
+    } else if (result.clearCookie) {
+      res.setHeader('Set-Cookie', cookieHeader(result.clearCookie, '', 0, secure));
+    }
     res.status(result.status).json(result.body);
   } catch (e) {
     console.error('[api/data]', e);
