@@ -48,6 +48,14 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuLabels, setMenuLabels] = useState<Record<string, string> | undefined>(undefined);
   const [navOrder, setNavOrder] = useState<string[] | undefined>(undefined);
+  /** حالت «نمای یوزر» ادمین: منوها و محتوا دقیقاً مثل کاربران ساخته‌ی خودش */
+  const [previewAsUser, setPreviewAsUser] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('admin-preview-as-user') === '1';
+    } catch {
+      return false;
+    }
+  });
   const notificationRequest = useRef<Promise<void> | null>(null);
   const lastNotificationLoadAt = useRef(0);
 
@@ -75,11 +83,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!account || account.role !== 'user') {
+    if (!account) {
       setMenuLabels(undefined);
       setNavOrder(undefined);
       return;
     }
+    // محتوای اختصاصی مالک: کاربر → ادمین سازنده، ادمین → خودش (برای نمای یوزر هم لازم است)
     apiGetContent().then((res) => {
       if (res.content) {
         if (res.content.menus) setMenuLabels(res.content.menus as Record<string, string>);
@@ -198,19 +207,40 @@ export default function App() {
     );
   }
 
-  // ادمین و سوپرادمین فقط پنل مدیریت را می‌بینند؛ حتی با ورود مستقیم به لینک فاز.
-  const effectiveRoute: Route = isAdmin
-    ? route === 'chat'
-      ? 'chat'
-      : 'admin'
-    : route === 'admin'
-      ? 'home'
-      : route;
-  const showAdmin = effectiveRoute === 'admin' && isAdmin;
+  // ادمین و سوپرادمین (در حالت عادی) فقط پنل مدیریت را می‌بینند؛
+  // در «نمای یوزر» مثل کاربران خودشان همه صفحات آموزشی را می‌بینند.
+  const previewing = isAdmin && previewAsUser;
+  const effectiveRoute: Route =
+    isAdmin && !previewAsUser
+      ? route === 'chat'
+        ? 'chat'
+        : 'admin'
+      : route === 'admin'
+        ? 'home'
+        : route;
+  const showAdmin = effectiveRoute === 'admin' && isAdmin && !previewAsUser;
   const showChat = effectiveRoute === 'chat';
   // صفحات سفارشی ادمین هم مثل صفحات راهنما رندر می‌شوند
   const guideView: GuideView | CustomPageRoute = (effectiveRoute as GuideView | CustomPageRoute) ?? 'home';
   const customTitle = isCustomRoute(effectiveRoute) ? (menuLabels?.[effectiveRoute] ?? 'صفحه آموزشی') : undefined;
+
+  const togglePreviewAsUser = useCallback(() => {
+    setPreviewAsUser((prev) => {
+      const next = !prev;
+      try {
+        if (next) sessionStorage.setItem('admin-preview-as-user', '1');
+        else sessionStorage.removeItem('admin-preview-as-user');
+      } catch {
+        /* ignore */
+      }
+      // رفتن به نمای یوزر → میز کار؛ برگشت → پنل مدیریت
+      const target: Route = next ? 'home' : 'admin';
+      window.location.hash = `#/${target}`;
+      setRoute(target);
+      setFocus(null);
+      return next;
+    });
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -225,6 +255,8 @@ export default function App() {
         onLogout={() => void onLogout()}
         menuLabels={menuLabels}
         navOrder={navOrder}
+        previewAsUser={previewing}
+        onTogglePreview={togglePreviewAsUser}
       />
 
       {/* شل — مطابق سیستم مرجع: .shell + .topbar + .content */}
@@ -244,6 +276,12 @@ export default function App() {
         />
 
         <main className="content">
+          {previewing && !showChat && (
+            <p className="preview-banner" role="status">
+              👁 حالت نمای یوزر — منوها و مطالب دقیقاً مثل کاربران شماست. برای بازگشت، دکمه «برگشت به حالت ادمین» در
+              پایین منو را بزنید.
+            </p>
+          )}
           <div key={effectiveRoute} className="view-enter fade">
             {showAdmin ? (
               <AdminPage account={account} onAccountChange={setAccount} />

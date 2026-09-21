@@ -13,6 +13,9 @@ interface Props {
   menuLabels?: Record<string, string>;
   /** ترتیب منوهای سفارشی ادمین (فقط کاربران) */
   navOrder?: string[];
+  /** حالت نمای یوزر ادمین */
+  previewAsUser?: boolean;
+  onTogglePreview?: () => void;
 }
 
 const NAV_ITEMS: Array<{ id: Route; label: string; adminOnly?: boolean }> = [
@@ -32,18 +35,20 @@ const ROLE_FA: Record<string, string> = {
   user: 'کاربر',
 };
 
-export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout, menuLabels, navOrder }: Props) {
+export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, open, onClose, onLogout, menuLabels, navOrder, previewAsUser, onTogglePreview }: Props) {
   const label = (id: string) =>
     menuLabels?.[id] ?? NAV_ITEMS.find((n) => n.id === id)?.label ?? id;
 
-  const items: Array<{ id: Route; label: string; adminOnly?: boolean }> = isAdmin
-    ? NAV_ITEMS.filter((it) => it.adminOnly || it.id === 'chat')
-    : navOrder && navOrder.length > 0
+  // در نمای یوزر، ادمین دقیقاً همان منوهای کاربران خودش را می‌بیند
+  const showUserNav = !isAdmin || previewAsUser;
+  const items: Array<{ id: Route; label: string; adminOnly?: boolean }> = showUserNav
+    ? navOrder && navOrder.length > 0
       ? [
           ...navOrder.map((id) => ({ id: id as Route, label: label(id) })),
           { id: 'chat' as Route, label: label('chat') === 'chat' ? 'گفت‌وگو' : label('chat') },
         ]
-      : NAV_ITEMS.filter((it) => !it.adminOnly);
+      : NAV_ITEMS.filter((it) => !it.adminOnly)
+    : NAV_ITEMS.filter((it) => it.adminOnly || it.id === 'chat');
 
   return (
     <>
@@ -67,7 +72,9 @@ export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, 
           </button>
         </div>
 
-        <div className="nav-label">{isAdmin ? 'مدیریت سیستم' : 'دوره آزمایشی'}</div>
+        <div className="nav-label">
+          {isAdmin ? (previewAsUser ? 'نمای یوزر 👁' : 'مدیریت سیستم') : 'دوره آزمایشی'}
+        </div>
         <nav className="nav">
           {items.map((it) => (
             <button
@@ -97,13 +104,25 @@ export default function Sidebar({ view, account, isAdmin, chatUnread, navigate, 
               <span className="muted">{ROLE_FA[account.role] ?? 'کاربر'}</span>
             </div>
           </div>
+        <button
+          className="plain muted"
+          style={{ width: '100%', marginTop: 12 }}
+          onClick={onLogout}
+        >
+          خروج از حساب
+        </button>
+        {isAdmin && onTogglePreview && (
           <button
-            className="plain muted"
-            style={{ width: '100%', marginTop: 12 }}
-            onClick={onLogout}
+            className={previewAsUser ? 'primary' : 'plain'}
+            style={{ width: '100%', marginTop: 8, fontSize: 13, fontWeight: 700 }}
+            onClick={() => {
+              onTogglePreview();
+              onClose();
+            }}
           >
-            خروج از حساب
+            {previewAsUser ? '🛡 برگشت به حالت ادمین' : '👁 رفتن به حالت یوزر'}
           </button>
+        )}
         </div>
       </aside>
     </>
