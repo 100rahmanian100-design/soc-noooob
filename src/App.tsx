@@ -108,6 +108,19 @@ export default function App() {
     });
   }, [account]);
 
+  /** فهرست اعلان‌ها را از سرور می‌خواند، stateها را به‌روز می‌کند و تعداد خوانده‌نشده‌ها را برمی‌گرداند. */
+  const fetchNotifications = useCallback(async (): Promise<number> => {
+    const res = await apiListNotifications();
+    const next = res.notifications ?? [];
+    const unread = res.unread ?? 0;
+    setNotifications(next);
+    setUnreadNotifications(unread);
+    setChatUnread(next.filter((n) => n.kind === 'chat-message' && !n.read).length);
+    const byActor = (res as { unreadByActorPhase?: Record<string, number> }).unreadByActorPhase ?? {};
+    setAdminInboxUnread(Object.values(byActor).reduce((s, n) => s + (n ?? 0), 0));
+    return unread;
+  }, []);
+
   const loadNotifications = useCallback(async (force = false) => {
     if (!account) return;
     // Blob Hobby has a 10k/month read quota. Reuse the current browser state for
@@ -116,14 +129,7 @@ export default function App() {
     if (notificationRequest.current) return notificationRequest.current;
     const request = (async () => {
       try {
-        const res = await apiListNotifications();
-        const next = res.notifications ?? [];
-        setNotifications(next);
-        setUnreadNotifications(res.unread ?? 0);
-        setChatUnread(next.filter((n) => n.kind === 'chat-message' && !n.read).length);
-        // بج صندوق ادمین در سایدبار
-        const byActor = (res as { unreadByActorPhase?: Record<string, number> }).unreadByActorPhase ?? {};
-        setAdminInboxUnread(Object.values(byActor).reduce((s, n) => s + (n ?? 0), 0));
+        await fetchNotifications();
         lastNotificationLoadAt.current = Date.now();
       } finally {
         notificationRequest.current = null;
@@ -131,7 +137,7 @@ export default function App() {
     })();
     notificationRequest.current = request;
     return request;
-  }, [account]);
+  }, [account, fetchNotifications]);
 
   const markAllNotificationsRead = useCallback(async () => {
     const res = await apiMarkNotifications([], true);
@@ -142,6 +148,18 @@ export default function App() {
       setAdminInboxUnread(0);
     }
   }, []);
+
+  /**
+   * باز شدن پنل اعلان‌ها (زنگوله) = دیدن اعلان‌ها
+   * اول فهرست تازه گرفته می‌شود، بعد اگر چیزی خوانده‌نشده مانده بود همه سین می‌شوند.
+   * اگر از قبل همه خوانده شده‌اند، هیچ درخواست نوشتنی به سرور ارسال نمی‌شود.
+   */
+  const openNotifications = useCallback(async () => {
+    if (!account) return;
+    const unread = await fetchNotifications();
+    lastNotificationLoadAt.current = Date.now();
+    if (unread > 0) await markAllNotificationsRead();
+  }, [account, fetchNotifications, markAllNotificationsRead]);
 
   useEffect(() => {
     if (!account) {
@@ -319,7 +337,7 @@ export default function App() {
           onOpenChat={openChat}
           notifications={notifications}
           unread={unreadNotifications}
-          onRefreshNotifications={loadNotifications}
+          onOpenNotifications={openNotifications}
           onMarkAllNotificationsRead={markAllNotificationsRead}
           customTitle={customTitle}
         />

@@ -12,7 +12,8 @@ interface Props {
   onOpenChat: (username: string) => void;
   notifications: AppNotification[];
   unread: number;
-  onRefreshNotifications: (force?: boolean) => Promise<void | undefined>;
+  /** با باز شدن پنل صدا زده می‌شود: فهرست تازه می‌آید و همه اعلان‌ها سین می‌شوند */
+  onOpenNotifications: () => Promise<void>;
   onMarkAllNotificationsRead: () => Promise<void>;
   /** عنوان صفحات سفارشی ادمین */
   customTitle?: string;
@@ -43,7 +44,7 @@ function fmtRelative(iso: string): string {
   }
 }
 
-export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment, onOpenChat, notifications, unread, onRefreshNotifications, onMarkAllNotificationsRead, customTitle }: Props) {
+export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenComment, onOpenChat, notifications, unread, onOpenNotifications, onMarkAllNotificationsRead, customTitle }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -66,7 +67,8 @@ export default function Topbar({ view, account, onToggleMenu, onLogout, onOpenCo
     setOpen(true);
     setLoading(true);
     try {
-      await onRefreshNotifications();
+      // باز شدن پنل = اعلان‌ها دیده شدند ⇒ همه سین می‌خورند
+      await onOpenNotifications();
     } finally {
       setLoading(false);
     }
