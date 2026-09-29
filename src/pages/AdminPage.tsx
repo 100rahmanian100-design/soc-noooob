@@ -930,12 +930,10 @@ function CommentInbox({ account }: { account: PublicAccount }) {
   useEffect(() => {
     void load();
     const refresh = () => void load();
+    // فقط رویداد کاربران؛ رویداد اعلان‌ها عمداً گوش داده نمی‌شود چون
+    // مسیر ارسال پیام خودش load() را صدا می‌زند و هر فراخوانی ۶ درخواست بود.
     window.addEventListener('users-changed', refresh);
-    window.addEventListener('notifications-updated', refresh);
-    return () => {
-      window.removeEventListener('users-changed', refresh);
-      window.removeEventListener('notifications-updated', refresh);
-    };
+    return () => window.removeEventListener('users-changed', refresh);
   }, [load]);
 
   useEffect(() => {

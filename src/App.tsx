@@ -66,6 +66,8 @@ export default function App() {
   });
   const notificationRequest = useRef<Promise<void> | null>(null);
   const lastNotificationLoadAt = useRef(0);
+  /** true یعنی داده اعلان‌ها کهنه شده و در جابه‌جایی بعدی صفحه باید تازه شود */
+  const notificationsStale = useRef(true);
 
   useEffect(() => {
     const onHash = () => {
@@ -121,23 +123,38 @@ export default function App() {
     return unread;
   }, []);
 
-  const loadNotifications = useCallback(async (force = false) => {
-    if (!account) return;
-    // Blob Hobby has a 10k/month read quota. Reuse the current browser state for
-    // five minutes; local app events can still force an immediate refresh.
-    if (!force && Date.now() - lastNotificationLoadAt.current < 5 * 60_000) return;
-    if (notificationRequest.current) return notificationRequest.current;
-    const request = (async () => {
-      try {
-        await fetchNotifications();
-        lastNotificationLoadAt.current = Date.now();
-      } finally {
-        notificationRequest.current = null;
-      }
-    })();
-    notificationRequest.current = request;
-    return request;
-  }, [account, fetchNotifications]);
+  /**
+   * دریافت اعلان‌ها — فقط در سه حالت انجام می‌شود:
+   *   ۱) بارگذاری اولیه (رفرش صفحه / ورود)
+   *   ۲) جابه‌جایی بین صفحه‌ها
+   *   ۳) باز کردن زنگوله
+   * هیچ پولینگ، تایمر یا refresh خودکاری وجود ندارد.
+   * اگر داده کهنه نشده باشد، اصلاً درخواستی ارسال نمی‌شود.
+   */
+  const loadNotifications = useCallback(
+    async (opts: { force?: boolean } = {}) => {
+      if (!account) return;
+      if (!opts.force && !notificationsStale.current) return;
+      if (notificationRequest.current) return notificationRequest.current;
+      const request = (async () => {
+        try {
+          await fetchNotifications();
+          lastNotificationLoadAt.current = Date.now();
+          notificationsStale.current = false;
+        } finally {
+          notificationRequest.current = null;
+        }
+      })();
+      notificationRequest.current = request;
+      return request;
+    },
+    [account, fetchNotifications],
+  );
+
+  /** رویداد محلی: فقط کهنگی را علامت می‌زند و هیچ درخواستی نمی‌فرستد */
+  const markNotificationsStale = useCallback(() => {
+    notificationsStale.current = true;
+  }, []);
 
   const markAllNotificationsRead = useCallback(async () => {
     const res = await apiMarkNotifications([], true);
@@ -158,6 +175,7 @@ export default function App() {
     if (!account) return;
     const unread = await fetchNotifications();
     lastNotificationLoadAt.current = Date.now();
+    notificationsStale.current = false;
     if (unread > 0) await markAllNotificationsRead();
   }, [account, fetchNotifications, markAllNotificationsRead]);
 
@@ -167,20 +185,23 @@ export default function App() {
       setNotifications([]);
       setUnreadNotifications(0);
       lastNotificationLoadAt.current = 0;
+      notificationsStale.current = true;
       return;
     }
+    // بارگذاری اولیه — یعنی رفرش صفحه یا ورود به حساب
+    notificationsStale.current = true;
     void loadNotifications();
-    const refresh = () => void loadNotifications(true);
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') void loadNotifications();
-    };
-    window.addEventListener('notifications-updated', refresh);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => {
-      window.removeEventListener('notifications-updated', refresh);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, [account, loadNotifications]);
+    // رویدادهای محلی فقط «کهنه» را علامت می‌زنند؛ هیچ درخواستی نمی‌فرستند.
+    // درخواست بعدی در جابه‌جایی بعدی صفحه یا با باز کردن زنگوله انجام می‌شود.
+    window.addEventListener('notifications-updated', markNotificationsStale);
+    return () => window.removeEventListener('notifications-updated', markNotificationsStale);
+  }, [account, loadNotifications, markNotificationsStale]);
+
+  // جابه‌جایی بین صفحه‌ها ⇒ درخواست تازه، ولی فقط اگر داده کهنه شده باشد
+  useEffect(() => {
+    if (!account) return;
+    void loadNotifications();
+  }, [account, route, loadNotifications]);
 
   const navigate = useCallback((r: Route) => {
     if (parseHash().route === r && r !== 'auth') return;
