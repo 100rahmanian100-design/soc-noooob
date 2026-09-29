@@ -8,6 +8,7 @@ import {
   type AppNotification,
   type ChatMessage,
   type Comment,
+  type ContentsFile,
   type Role,
   INVITE_CODE,
   SESSION_COOKIE,
@@ -207,10 +208,19 @@ async function taskKeysForOwnerLower(ownerLower: string | null): Promise<Record<
   if (!ownerLower) return PROGRESS_TASK_KEYS;
   try {
     const file = await getContents();
-    const entry = file.contents[ownerLower];
-    if (!entry) return PROGRESS_TASK_KEYS;
-    const custom = taskKeysFromStored(entry.content);
-    return custom ?? PROGRESS_TASK_KEYS;
+    return taskKeysForOwnerFrom(file, ownerLower);
+  } catch {
+    return PROGRESS_TASK_KEYS;
+  }
+}
+
+/** نسخه‌ی خالص: بدون خواندن از Blob — برای استفاده در حلقه‌هایی که فایل را از قبل دارند */
+function taskKeysForOwnerFrom(file: ContentsFile, ownerLower: string | null): Record<string, string[]> {
+  if (!ownerLower) return PROGRESS_TASK_KEYS;
+  const entry = file.contents[ownerLower];
+  if (!entry) return PROGRESS_TASK_KEYS;
+  try {
+    return taskKeysFromStored(entry.content) ?? PROGRESS_TASK_KEYS;
   } catch {
     return PROGRESS_TASK_KEYS;
   }
@@ -1046,7 +1056,36 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         );
       }
       // سوپر ادمین: همه حساب‌ها شامل ادمین‌ها هم نمایش داده می‌شوند
-      const rows = [] as Array<{
+      // محتوا فقط یک‌بار خوانده می‌شود (نه برای هر کاربر) و خواندن داده‌های
+      // کاربران به‌صورت موازی انجام می‌شود تا تعداد درخواست‌های Blob کم بماند.
+      let contents: ContentsFile = { contents: {} };
+      try {
+        contents = await getContents();
+      } catch {
+        /* محتوایی ذخیره نشده — کلیدهای پیش‌فرض استفاده می‌شود */
+      }
+      const rows = (
+        await Promise.all(
+          targets.map(async (t) => {
+            const data = await getUserData(t.username);
+            const ownerLower =
+              t.role === 'user'
+                ? t.createdBy
+                  ? t.createdBy.toLowerCase()
+                  : null
+                : t.username.toLowerCase();
+            const keys = taskKeysForOwnerFrom(contents, ownerLower);
+            return {
+              username: t.username,
+              email: t.email ?? null,
+              role: t.role,
+              createdAt: t.createdAt,
+              active: t.active,
+              summary: progressSummary(data.progress ?? {}, keys),
+            };
+          }),
+        )
+      ) as Array<{
         username: string;
         email: string | null;
         role: string;
@@ -1054,21 +1093,6 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         active: boolean;
         summary: ReturnType<typeof progressSummary>;
       }>;
-      for (const t of targets) {
-        const data = await getUserData(t.username);
-        const ownerLower = t.role === 'user'
-          ? (t.createdBy ? t.createdBy.toLowerCase() : null)
-          : t.username.toLowerCase();
-        const keys = await taskKeysForOwnerLower(ownerLower);
-        rows.push({
-          username: t.username,
-          email: t.email ?? null,
-          role: t.role,
-          createdAt: t.createdAt,
-          active: t.active,
-          summary: progressSummary(data.progress ?? {}, keys),
-        });
-      }
       rows.sort((a, b) => a.username.localeCompare(b.username));
       return ok({ rows });
     }

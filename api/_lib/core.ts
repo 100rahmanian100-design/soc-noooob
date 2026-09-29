@@ -285,7 +285,78 @@ function writeLocalJSON(file: string, value: unknown): void {
 }
 
 /** خواندن یک سند JSON از Blob (یا فایل محلی) — null اگر وجود نداشته باشد */
+// ---------------------------------------------------------------------------
+// لایه کش: کاهش تعداد درخواست‌های خواندن از Blob
+//
+// پلن Hobby سقف ماهانه‌ی محدودی برای عملیات Blob دارد. چون تقریباً هر درخواست
+// API چند بار accounts/comments را می‌خواند، دو لایه‌ی زیر اضافه شده:
+//   ۱) کش حافظه‌ای با TTL کوتاه (پیش‌فرض ۱۵ ثانیه) — خواندن‌های پشت‌سرهم یک سند
+//      فقط یک بار به Blob می‌رود.
+//   ۲) هم‌ادغامی درخواست‌های هم‌زمان (single-flight) — اگر ده درخواست با هم
+//      بروند، فقط یکی واقعاً به Blob می‌رود و بقیه همان Promise را می‌گیرند.
+// هر write کلید مربوطه را باطل می‌کند، پس داده هیچ‌وقت کهنه نمی‌ماند.
+// ---------------------------------------------------------------------------
+
+/** TTL کش به میلی‌ثانیه — با BLOB_CACHE_TTL_MS قابل تنظیم است */
+const CACHE_TTL_MS = Math.max(0, Number(process.env.BLOB_CACHE_TTL_MS ?? 15_000) || 0);
+
+interface CacheEntry {
+  value: unknown;
+  expiresAt: number;
+}
+
+/** کش سندها بر اساس کلید Blob */
+const docCache = new Map<string, CacheEntry>();
+/** درخواست‌های در جریان، برای هم‌ادغامی (single-flight) */
+const inflight = new Map<string, Promise<unknown>>();
+
+/** باطل‌کردن کش یک کلید (بعد از هر write) */
+function invalidate(key: string): void {
+  docCache.delete(key);
+}
+
+/**
+ * کپی عمیق — هندلرها فایلِ برگشتی را مستقیم تغییر می‌دهند (push/splice/read=true)،
+ * پس هر خواننده باید نمونه‌ی مستقل بگیرد تا تغییراتش روی کش اثر نگذارد.
+ */
+function deepCopy<T>(value: T): T {
+  if (value === null || typeof value !== 'object') return value;
+  return (typeof structuredClone === 'function'
+    ? structuredClone(value)
+    : (JSON.parse(JSON.stringify(value)) as T));
+}
+
+/**
+ * خواندن یک سند JSON از کش — در صورت نبودِ کش، یک‌بار از منبع می‌خواند،
+ * نتیجه را کش می‌کند و درخواست‌های هم‌زمانِ روی همان کلید را ادغام می‌کند.
+ * همیشه یک کپی تازه برمی‌گرداند تا کش هرگز دستکاری نشود.
+ */
 async function readJSON<T>(key: string): Promise<T | null> {
+  const cached = docCache.get(key);
+  if (cached) {
+    if (cached.expiresAt > Date.now()) return deepCopy(cached.value) as T;
+    docCache.delete(key);
+  }
+
+  // اگر درخواست هم‌زمانی برای همین کلید در جریان است، همان را منتظر می‌مانیم
+  // تا فقط یک خواندن واقعی به Blob انجام شود.
+  const running = inflight.get(key);
+  if (running) return deepCopy((await running) as T | null);
+
+  const request = (async () => {
+    try {
+      const value = await readJSONUncached<T>(key);
+      if (CACHE_TTL_MS > 0) docCache.set(key, { value: deepCopy(value), expiresAt: Date.now() + CACHE_TTL_MS });
+      return value;
+    } finally {
+      inflight.delete(key);
+    }
+  })();
+  inflight.set(key, request);
+  return deepCopy((await request) as T | null);
+}
+
+async function readJSONUncached<T>(key: string): Promise<T | null> {
   if (blobApi) {
     const text = await blobGet(key);
     if (text == null || text === '') return null; // هنوز ساخته نشده
@@ -298,8 +369,11 @@ async function readJSON<T>(key: string): Promise<T | null> {
   return readLocalJSON<T>(key);
 }
 
-/** نوشتن یک سند JSON در Blob (یا فایل محلی) */
+/** نوشتن یک سند JSON در Blob (یا فایل محلی) — کش این کلید باطل می‌شود */
 async function writeJSON(key: string, value: unknown): Promise<void> {
+  // کش قدیمی دیگر معتبر نیست؛ پیش از نوشتن حذفش می‌کنیم تا خواندنِ
+  // بعدی حتماً نسخه‌ی تازه را از Blob بگیرد.
+  invalidate(key);
   if (blobApi) {
     await blobPut(key, encryptJSON(value));
     return;
