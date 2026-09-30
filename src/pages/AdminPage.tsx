@@ -413,6 +413,8 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
   const [loading, setLoading] = useState(true);
   const [inspectUser, setInspectUser] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<'new' | 'name' | 'progress-desc' | 'progress-asc'>('new');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const load = useCallback(async () => {
     try {
@@ -432,11 +434,18 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) => r.username.toLowerCase().includes(q) || (r.email ?? '').toLowerCase().includes(q),
+    const list = rows.filter(
+      (r) =>
+        (statusFilter === 'all' || (statusFilter === 'active' ? r.active : !r.active)) &&
+        (!q || r.username.toLowerCase().includes(q) || (r.email ?? '').toLowerCase().includes(q)),
     );
-  }, [rows, query]);
+    const sorted = [...list];
+    if (sort === 'name') sorted.sort((a, b) => a.username.localeCompare(b.username));
+    else if (sort === 'progress-desc') sorted.sort((a, b) => b.summary.total.pct - a.summary.total.pct);
+    else if (sort === 'progress-asc') sorted.sort((a, b) => a.summary.total.pct - b.summary.total.pct);
+    else sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return sorted;
+  }, [rows, query, sort, statusFilter]);
 
   return (
     <section className="rounded-2xl border border-line bg-surface p-5">
@@ -448,13 +457,35 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
         درصد پیشرفت هر کاربر در فازهای ۱ تا ۳ بر اساس منابع مشاهده‌شده به‌صورت زنده به‌روزرسانی می‌شود.
         ستون «کل دوره» شامل صفحات سفارشی شما هم می‌شود.
       </p>
-      <div className="mb-3">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="جست‌وجوی نام کاربری یا ایمیل…"
-          className="w-full max-w-sm rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent"
+          className="w-full max-w-sm flex-1 rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent"
         />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+          className="w-auto rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+        >
+          <option value="all">همه حساب‌ها</option>
+          <option value="active">فقط فعال</option>
+          <option value="inactive">فقط غیرفعال</option>
+        </select>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as typeof sort)}
+          className="w-auto rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+        >
+          <option value="new">جدیدترین</option>
+          <option value="name">نام کاربری</option>
+          <option value="progress-desc">بیشترین پیشرفت</option>
+          <option value="progress-asc">کمترین پیشرفت</option>
+        </select>
+        <span className="text-[11px] text-muted">
+          {filteredRows.length.toLocaleString('fa-IR')} از {rows.length.toLocaleString('fa-IR')}
+        </span>
       </div>
 
       {inspectUser && (
@@ -495,6 +526,11 @@ function UsersProgressTable({ account }: { account: PublicAccount }) {
                         <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${roleBadge(r.role)}`}>
                           {ROLE_LABEL[r.role] ?? 'کاربر'}
                         </span>
+                        {!r.active && (
+                          <span className="rounded-md border border-danger/50 bg-danger/10 px-2 py-0.5 text-[10px] font-semibold text-danger">
+                            غیرفعال
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-3 py-3 text-xs" dir="ltr">
@@ -630,12 +666,121 @@ function ChangeOwnPassword() {
   );
 }
 
+/* مودال ورودی تک‌فیلدی (جایگزین window.prompt) */
+function InputModal({
+  title,
+  label,
+  hint,
+  initial = '',
+  type = 'text',
+  ltr = true,
+  minLength,
+  pattern,
+  submitLabel = 'ذخیره',
+  onSubmit,
+  onClose,
+}: {
+  title: string;
+  label: string;
+  hint?: string;
+  initial?: string;
+  type?: 'text' | 'password';
+  ltr?: boolean;
+  minLength?: number;
+  pattern?: string;
+  submitLabel?: string;
+  onSubmit: (value: string) => Promise<string | void> | string | void;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const [show, setShow] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const err = await onSubmit(value);
+      if (err) setError(err);
+      else onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <form
+        onSubmit={submit}
+        autoComplete="off"
+        className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="mb-4 flex items-center gap-2 text-base font-extrabold">
+          <span className="inline-block h-5 w-1.5 rounded bg-accent" />
+          {title}
+        </h3>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-muted">{label}</span>
+          <div className="relative">
+            <input
+              autoFocus
+              dir={ltr ? 'ltr' : 'auto'}
+              type={type === 'password' && !show ? 'password' : 'text'}
+              autoComplete={type === 'password' ? 'new-password' : 'off'}
+              value={value}
+              minLength={minLength}
+              pattern={pattern}
+              required
+              onChange={(e) => setValue(e.target.value)}
+              className="w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none transition focus:border-accent"
+            />
+            {type === 'password' && (
+              <button
+                type="button"
+                onClick={() => setShow((v) => !v)}
+                className="absolute inset-y-0 end-1 my-auto h-8 min-h-0 border-0 px-2 text-[11px] text-muted"
+              >
+                {show ? 'پنهان' : 'نمایش'}
+              </button>
+            )}
+          </div>
+        </label>
+        {hint && <p className="mt-2 text-[11px] leading-5 text-muted">{hint}</p>}
+        {error && <p className="mt-3 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition hover:bg-raised">
+            انصراف
+          </button>
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-lg border-0 bg-accent px-5 py-2 text-sm font-bold text-ink transition hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? 'در حال ذخیره…' : submitLabel}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 /* عملیات هر کاربر: مشاهده وضعیت + مدیریت */
 function UserActions({ account, row, onInspect }: { account: PublicAccount; row: UserProgressRow; onInspect: () => void }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const [modal, setModal] = useState<'password' | 'rename' | null>(null);
 
   const setStatus = async (active: boolean) => {
+    if (!active && !window.confirm(`حساب «${row.username}» غیرفعال شود؟ کاربر دیگر نمی‌تواند وارد شود.`)) return;
     setBusy(true);
     setNote('');
     const res = await apiSetUserStatus(row.username, active);
@@ -647,28 +792,7 @@ function UserActions({ account, row, onInspect }: { account: PublicAccount; row:
     setBusy(false);
   };
 
-  const resetPass = async () => {
-    const next = window.prompt(`رمز جدید برای «${row.username}» (حداقل ۸ نویسه):`);
-    if (!next) return;
-    setNote('');
-    const res = await apiResetPassword(row.username, next);
-    setNote(String(res.error ?? res.message ?? ''));
-  };
-
-  const rename = async () => {
-    const next = window.prompt(`نام کاربری جدید برای «${row.username}»:`, row.username);
-    const newUsername = next?.trim() ?? '';
-    if (!newUsername || newUsername.toLowerCase() === row.username.toLowerCase()) return;
-    setBusy(true);
-    setNote('');
-    const res = await apiRenameUser(row.username, newUsername);
-    if (res.error) setNote(res.error);
-    else {
-      setNote(res.message ?? 'نام کاربری تغییر کرد.');
-      window.dispatchEvent(new Event('users-changed'));
-    }
-    setBusy(false);
-  };
+  const btn = 'rounded-lg border border-line px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:bg-raised';
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -676,36 +800,59 @@ function UserActions({ account, row, onInspect }: { account: PublicAccount; row:
         onClick={onInspect}
         className="rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] font-bold text-accent transition hover:bg-accent hover:text-ink"
       >
-        مشاهده وضعیت کاربر
+        مشاهده وضعیت
       </button>
       {account.role !== 'user' && (
         <>
-          <button
-            disabled={busy}
-            onClick={() => void setStatus(!row.active)}
-            className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:bg-raised"
-          >
-            {row.active ? 'غیرفعال' : 'فعال'}
+          <button disabled={busy} onClick={() => void setStatus(!row.active)} className={btn}>
+            {row.active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}
           </button>
-          <button
-            disabled={busy}
-            onClick={() => void resetPass()}
-            className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:bg-raised"
-          >
+          <button disabled={busy} onClick={() => setModal('password')} className={btn}>
             تغییر رمز
           </button>
           {row.role === 'user' && (
-            <button
-              disabled={busy}
-              onClick={() => void rename()}
-              className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:bg-raised"
-            >
+            <button disabled={busy} onClick={() => setModal('rename')} className={btn}>
               ویرایش نام کاربری
             </button>
           )}
         </>
       )}
       {note && <span className="block w-full text-[10px] text-muted">{note}</span>}
+
+      {modal === 'password' && (
+        <InputModal
+          title={`رمز جدید برای «${row.username}»`}
+          label="رمز جدید"
+          hint="حداقل ۸ نویسه."
+          type="password"
+          minLength={8}
+          submitLabel="ذخیره رمز"
+          onClose={() => setModal(null)}
+          onSubmit={async (v) => {
+            const res = await apiResetPassword(row.username, v);
+            if (res.error) return String(res.error);
+            setNote(String(res.message ?? 'رمز تغییر کرد.'));
+          }}
+        />
+      )}
+      {modal === 'rename' && (
+        <InputModal
+          title={`نام کاربری جدید برای «${row.username}»`}
+          label="نام کاربری"
+          hint="۳ تا ۳۲ نویسه؛ فقط حروف لاتین، عدد، نقطه، خط تیره یا زیرخط."
+          initial={row.username}
+          pattern="[A-Za-z0-9._-]{3,32}"
+          onClose={() => setModal(null)}
+          onSubmit={async (v) => {
+            const next = v.trim();
+            if (next.toLowerCase() === row.username.toLowerCase()) return 'نام جدید با نام فعلی فرقی ندارد.';
+            const res = await apiRenameUser(row.username, next);
+            if (res.error) return res.error;
+            setNote(res.message ?? 'نام کاربری تغییر کرد.');
+            window.dispatchEvent(new Event('users-changed'));
+          }}
+        />
+      )}
     </div>
   );
 }
