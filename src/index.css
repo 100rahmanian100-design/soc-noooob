@@ -320,3 +320,37 @@ button.guide-link.share-link:hover{background:transparent;color:var(--accent);op
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 @media print{.sidebar,.topbar,button,.sticky-notes,.filters,.library-filters,.toast,.code-head button{display:none!important}.shell{margin:0}.content{padding:0;max-width:none}.playbook-grid{display:block}.reader{max-width:none}body{background:oklch(99% .005 105);color:oklch(20% .01 105)}pre{white-space:pre-wrap;overflow:visible;font-size:10pt}.code-box,.notice{break-inside:avoid;background:transparent}.source-entry a{color:inherit}.editorial-home{display:block}}
+
+/* ————— ویرایشگر محتوای پنل ادمین ————— */
+.ed label{margin:0}
+.ed-bar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:-20px -20px 16px;padding:10px 20px;border-bottom:1px solid var(--line);border-radius:16px 16px 0 0;background:color-mix(in oklch,var(--surface) 90%,transparent);backdrop-filter:blur(10px)}
+.ed-dot{width:9px;height:9px;flex:none;border-radius:50%;background:oklch(72% .14 155)}
+.ed-dot.is-dirty{background:var(--amber);box-shadow:0 0 0 4px oklch(83% .12 77 / .2)}
+.ed-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:4px 12px;border-radius:9px;color:var(--muted);font-size:12px;font-weight:700;white-space:nowrap}
+.ed-btn:hover:not(:disabled){background:var(--raised);color:var(--text)}
+.ed-btn.icon{width:34px;padding:0;font-size:14px}
+.ed-btn.primary{background:var(--accent);border-color:transparent;color:var(--ink)}
+.ed-btn.primary:hover:not(:disabled){background:oklch(89% .11 112);color:var(--ink)}
+.ed-btn.danger:hover:not(:disabled){background:transparent;border-color:var(--red);color:var(--red)}
+.ed-btn kbd{font:600 10px/1 monospace;padding:3px 5px;border-radius:5px;background:oklch(23% .03 112 / .18)}
+.ed-banner{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;border:1px solid oklch(83% .12 77 / .5);border-radius:12px;background:oklch(83% .12 77 / .09);font-size:12px}
+.ed-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.ed-tab{min-height:34px;padding:4px 14px;border-radius:9px;color:var(--muted);font-size:12px;font-weight:700}
+.ed-tab.active{background:var(--accent);border-color:transparent;color:var(--ink)}
+.ed-tab.active:hover{background:var(--accent)}
+.ed-block{border:1px solid var(--line);border-radius:14px;background:var(--bg);transition:border-color .15s}
+.ed-block:hover,.ed-block.is-open{border-color:color-mix(in oklch,var(--accent) 35%,var(--line))}
+.ed-block-head{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;user-select:none}
+.ed-block-summary{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px}
+.ed-block-body{padding:4px 12px 12px}
+.ed-insert{display:flex;align-items:center;justify-content:center;position:relative;min-height:26px}
+.ed-insert::before{content:'';position:absolute;inset-inline:0;top:50%;border-top:1px dashed var(--line);opacity:0;transition:opacity .15s}
+.ed-insert:hover::before,.ed-insert.is-open::before{opacity:1}
+.ed-insert>button{position:relative;width:22px;min-height:22px;padding:0;border-radius:50%;background:var(--surface);color:var(--muted);font-size:15px;line-height:1;opacity:.4;transition:opacity .15s}
+.ed-insert:hover>button,.ed-insert>button:focus-visible,.ed-insert.is-open>button{opacity:1;border-color:var(--accent);color:var(--accent)}
+@media(hover:none){.ed-insert>button{opacity:.75}}
+.ed-types{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:4px 0 8px;padding:8px;border:1px dashed var(--line);border-radius:12px;background:var(--surface)}
+.ed-chip{border-color:var(--line)}
+.ed-chip-icon{color:var(--accent);font-weight:800}
+.ed-row{padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.ed-auto{min-height:0;resize:none;overflow:hidden;line-height:1.9}
