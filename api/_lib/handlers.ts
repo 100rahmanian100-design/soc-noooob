@@ -573,6 +573,8 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
     case 'comments:list': {
       if (!phase) return err(400, 'شناسه فاز لازم است.');
       const list = await visibleComments(account, phase);
+      // جدیدترین رشته‌ها بالا باشند تا کاربر بدون اسکرول پیام تازه را ببیند
+      list.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
       return ok({ comments: list });
     }
 
@@ -1126,11 +1128,11 @@ export async function handleData(ctx: ApiCtx): Promise<ApiResult> {
         const rootIds = new Set(roots.map((c) => c.id));
         thread = comments
           .filter((c) => rootIds.has(c.id) || (c.parentId !== null && rootIds.has(c.parentId)))
-          .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+          .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
       } else {
         thread = comments
           .filter((c) => c.author.toLowerCase() === target.username.toLowerCase())
-          .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+          .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
           .slice(0, 100);
       }
       return ok({

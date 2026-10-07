@@ -1124,16 +1124,20 @@ function CommentInbox({ account }: { account: PublicAccount }) {
   const selectedRoots = useMemo(() => {
     if (!selectedUser || !selectedPhase) return [];
     const username = userKey(selectedUser);
-    return phaseComments.filter(
-      (comment) =>
-        comment.parentId === null &&
-        (comment.author.toLowerCase() === username ||
-          comment.targetUser?.toLowerCase() === username),
-    );
+    return phaseComments
+      .filter(
+        (comment) =>
+          comment.parentId === null &&
+          (comment.author.toLowerCase() === username ||
+            comment.targetUser?.toLowerCase() === username),
+      )
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }, [phaseComments, selectedPhase, selectedUser]);
 
   const repliesOf = (rootId: string) =>
-    phaseComments.filter((comment) => comment.parentId === rootId);
+    phaseComments
+      .filter((comment) => comment.parentId === rootId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
 
   const replyTarget = useMemo(
     () => selectedRoots.find((root) => root.id === replyTargetId) ?? null,

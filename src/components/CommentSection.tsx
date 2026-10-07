@@ -71,9 +71,13 @@ export default function CommentSection({ phase, phaseTitle, account, focusId, fo
     return () => window.clearTimeout(timer);
   }, [focusId, focusNonce, comments]);
 
-  const roots = useMemo(() => comments.filter((c) => c.parentId === null), [comments]);
+  const roots = useMemo(
+    () => comments.filter((c) => c.parentId === null).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    [comments],
+  );
   const repliesOf = useCallback(
-    (id: string) => comments.filter((c) => c.parentId === id),
+    (id: string) =>
+      comments.filter((c) => c.parentId === id).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)),
     [comments],
   );
 
