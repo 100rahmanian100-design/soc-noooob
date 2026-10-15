@@ -8,7 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "tsx server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:storage": "node scripts/run-tests.mjs storage",
+    "test:handlers": "node scripts/run-tests.mjs handlers",
+    "test": "node scripts/run-tests.mjs",
+    "migrate:d1": "tsx scripts/migrate-blob-to-d1.ts",
+    "migrate:d1:verify": "tsx scripts/migrate-blob-to-d1.ts --verify-only"
   },
   "dependencies": {
     "express": "^4.21.2",

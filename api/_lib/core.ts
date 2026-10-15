@@ -2,14 +2,12 @@
  * هسته مشترک بک‌اند
  * — هش رمز عبور (scrypt)، توکن نشست (HMAC)، لایه ذخیره‌سازی
  *
- * ذخیره‌سازی:
- *  - روی Vercel: Vercel Blob (@vercel/blob) — فایل‌های JSON
- *      • accounts.json         → لیست کاربران
- *      • user-data/<user>.json → داده هر کاربر (پیشرفت و ...)
- *      • comments.json         → کامنت‌های فازها
- *    محتوای فایل‌ها پیش از نوشتن در Blob با AES-256-GCM رمزنگاری می‌شود تا
- *    URL عمومی Blob محتوای حساس (هش رمز) را لو ندهد.
- *  - محلی (بدون BLOB_READ_WRITE_TOKEN): فایل‌های خام در پوشه .data/
+ * ذخیره‌سازی (STORAGE_BACKEND انتخاب می‌کند؛ پیش‌فرض: Blob):
+ *  - 'd1': Cloudflare D1 از طریق Worker (STORAGE_API_URL + STORAGE_API_TOKEN)
+ *  - 'blob': Vercel Blob خصوصی (BLOB_READ_WRITE_TOKEN) — رفتار فعلی پروداکشن
+ *  - 'local': فایل‌های خام در پوشه .data/ (توسعه)
+ *  محتوای فایل‌ها پیش از نوشتن با AES-256-GCM رمزنگاری می‌شود؛ D1 هم فقط
+ *  payload رمزنگاری‌شده را نگه می‌دارد. هیچ fallback پنهانی بین بک‌اندها نیست.
  */
 import {
   createHash,
@@ -22,6 +20,7 @@ import {
 } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { d1Get, d1Put, storageBackend } from './d1.js';
 
 /**
  * لایه REST مستقیم Vercel Blob با fetch بومی.
@@ -41,7 +40,8 @@ import { join } from 'node:path';
 // ---------------------------------------------------------------------------
 
 export const INVITE_CODE = process.env.INVITE_CODE ?? 'soc-noooob';
-const DATA_DIR = join(process.cwd(), '.data');
+/** Local dev dir; SOC_DATA_DIR overrides it (used by tests for isolation). */
+const DATA_DIR = (process.env.SOC_DATA_DIR ?? '').trim() || join(process.cwd(), '.data');
 
 /** کلید رمزنگاری/امضا: از محیط یا از فایل محلی خوانده می‌شود */
 function loadSecret(): string {
@@ -225,7 +225,48 @@ async function blobGet(key: string): Promise<string | null> {
   return res.text();
 }
 
-const blobApi = !!blobToken();
+/** Raw encrypted-payload access for the migration procedure (server-side only). */
+export async function readRawBlob(key: string): Promise<string | null> {
+  return blobGet(key);
+}
+
+export async function readRawD1(key: string): Promise<string | null> {
+  const { d1Get: get } = await import('./d1.js');
+  return get(key);
+}
+
+export async function writeRawD1(key: string, rawEncrypted: string): Promise<void> {
+  const { d1Put: put } = await import('./d1.js');
+  await put(key, rawEncrypted);
+}
+
+export function allFixedKeys(): string[] {
+  return [blobKeys.accounts, blobKeys.comments, blobKeys.notifications, blobKeys.chat, blobKeys.contents];
+}
+
+/** Exported for migration/tests — not part of the public API. */
+export function storageKeyForUser(username: string): string {
+  return blobKeys.userData(username);
+}
+
+/** Current active backend (for health/diagnostics — no secrets). */
+export function activeBackend(): 'd1' | 'blob' | 'local' {
+  return storageBackend();
+}
+
+export function clearDocCache(): void {
+  docCache.clear();
+  inflight.clear();
+}
+
+/** Test helper: raw encrypt/decrypt round-trip without touching storage. */
+export function __encryptForTest(value: unknown): string {
+  return encryptJSON(value);
+}
+
+export function __decryptForTest<T>(raw: string): T | null {
+  return decryptJSON<T>(raw);
+}
 
 const blobKeys = {
   accounts: 'accounts.json.enc',
@@ -357,7 +398,18 @@ async function readJSON<T>(key: string): Promise<T | null> {
 }
 
 async function readJSONUncached<T>(key: string): Promise<T | null> {
-  if (blobApi) {
+  const backend = storageBackend();
+  // D1 — بک‌اند جدید (فقط وقتی STORAGE_BACKEND=d1). خطا صریح، بدون fallback.
+  if (backend === 'd1') {
+    const text = await d1Get(key);
+    if (text == null || text === '') return null; // هنوز ساخته نشده
+    try {
+      return decryptJSON<T>(text) ?? (JSON.parse(text) as T);
+    } catch {
+      return null;
+    }
+  }
+  if (backend === 'blob') {
     const text = await blobGet(key);
     if (text == null || text === '') return null; // هنوز ساخته نشده
     try {
@@ -369,12 +421,18 @@ async function readJSONUncached<T>(key: string): Promise<T | null> {
   return readLocalJSON<T>(key);
 }
 
-/** نوشتن یک سند JSON در Blob (یا فایل محلی) — کش این کلید باطل می‌شود */
+/** نوشتن یک سند JSON در بک‌اند فعال (d1/blob/local) — کش این کلید باطل می‌شود */
 async function writeJSON(key: string, value: unknown): Promise<void> {
   // کش قدیمی دیگر معتبر نیست؛ پیش از نوشتن حذفش می‌کنیم تا خواندنِ
-  // بعدی حتماً نسخه‌ی تازه را از Blob بگیرد.
+  // بعدی حتماً نسخه‌ی تازه را از منبع بگیرد.
   invalidate(key);
-  if (blobApi) {
+  const backend = storageBackend();
+  // D1 — بدون fallback پنهانی: خطا صریح بالا می‌رود، split-brain ممنوع.
+  if (backend === 'd1') {
+    await d1Put(key, encryptJSON(value));
+    return;
+  }
+  if (backend === 'blob') {
     await blobPut(key, encryptJSON(value));
     return;
   }
