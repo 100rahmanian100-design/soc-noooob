@@ -10,8 +10,14 @@ export default function handler(_req: VercelRequest, res: VercelResponse): void 
     ok: true,
     time: new Date().toISOString(),
     node: process.version,
-    hasBlobToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+    storage: {
+      // r2 = مقصد جدید؛ blob = قدیمی (دوران مهاجرت)؛ local = توسعه محلی
+      backend: process.env.R2_BUCKET ? 'r2' : process.env.BLOB_READ_WRITE_TOKEN ? 'blob' : 'local',
+      hasR2: !!process.env.R2_BUCKET,
+      hasBlobToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+    },
     hasAuthSecret: !!process.env.AUTH_SECRET,
     hasInviteCode: !!process.env.INVITE_CODE,
+    hasBlobToken: !!process.env.BLOB_READ_WRITE_TOKEN,
   });
 }
