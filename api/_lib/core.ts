@@ -2,19 +2,14 @@
  * هسته مشترک بک‌اند
  * — هش رمز عبور (scrypt)، توکن نشست (HMAC)، لایه ذخیره‌سازی
  *
- * ذخیره‌سازی (به‌ترتیب اولویت):
- *  1. Cloudflare R2 (اگر R2_* ست باشد) — فایل‌های JSON رمزنگاری‌شده
- *      • accounts.json.enc
- *      • user-data/<user>.json.enc
- *      • comments.json.enc / notifications / chat / contents
- *  2. Vercel Blob (اگر BLOB_READ_WRITE_TOKEN ست باشد) — fallback دوران مهاجرت
- *  3. محلی (هیچکدام نباشد): فایل‌های خام در پوشه .data/
- *
- * سیاست مهاجرت بدون از دست رفتن دیتا:
- *  - خواندن: ابتدا R2، اگر نبود Blob، اگر نبود فایل محلی.
- *    وقتی سند از Blob پیدا شود و R2 فعال باشد، همان لحظه در R2 کپی
- *    می‌شود (self-heal) تا به‌تدریج همه‌چیز منتقل شود.
- *  - نوشتن: فقط در مقصد اصلی (R2 > Blob > محلی).
+ * ذخیره‌سازی:
+ *  - روی Vercel: Vercel Blob (@vercel/blob) — فایل‌های JSON
+ *      • accounts.json         → لیست کاربران
+ *      • user-data/<user>.json → داده هر کاربر (پیشرفت و ...)
+ *      • comments.json         → کامنت‌های فازها
+ *    محتوای فایل‌ها پیش از نوشتن در Blob با AES-256-GCM رمزنگاری می‌شود تا
+ *    URL عمومی Blob محتوای حساس (هش رمز) را لو ندهد.
+ *  - محلی (بدون BLOB_READ_WRITE_TOKEN): فایل‌های خام در پوشه .data/
  */
 import {
   createHash,
@@ -27,7 +22,6 @@ import {
 } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { r2Enabled, r2Get, r2Put } from './r2.js';
 
 /**
  * لایه REST مستقیم Vercel Blob با fetch بومی.
@@ -363,41 +357,6 @@ async function readJSON<T>(key: string): Promise<T | null> {
 }
 
 async function readJSONUncached<T>(key: string): Promise<T | null> {
-  // ۱) R2 (مقصد نهایی)
-  if (r2Enabled()) {
-    try {
-      const text = await r2Get(key);
-      if (text != null && text !== '') {
-        try {
-          return decryptJSON<T>(text) ?? (JSON.parse(text) as T);
-        } catch {
-          return null;
-        }
-      }
-    } catch (e) {
-      console.error(`[storage] r2 get failed for ${key}:`, (e as Error)?.message ?? e);
-      // ادامه به fallback — خواندن نباید به‌خاطر خطای R2 بمیرد
-    }
-    // اگر در R2 نبود، از Blob بخوان و همان لحظه به R2 منتقل کن (self-heal)
-    if (blobApi) {
-      const text = await blobGet(key);
-      if (text == null || text === '') return readLocalJSON<T>(key);
-      try {
-        const value = decryptJSON<T>(text) ?? (JSON.parse(text) as T);
-        // مهاجرت تنبل: بازنویسی همان payload خام در R2 (قبلاً رمزنگاری‌شده است)
-        try {
-          await r2Put(key, text);
-        } catch (e) {
-          console.error(`[storage] r2 self-heal put failed for ${key}:`, (e as Error)?.message ?? e);
-        }
-        return value;
-      } catch {
-        return null;
-      }
-    }
-    return readLocalJSON<T>(key);
-  }
-  // ۲) Blob (حالت قدیمی — قبل از تنظیم R2)
   if (blobApi) {
     const text = await blobGet(key);
     if (text == null || text === '') return null; // هنوز ساخته نشده
@@ -410,17 +369,11 @@ async function readJSONUncached<T>(key: string): Promise<T | null> {
   return readLocalJSON<T>(key);
 }
 
-/** نوشتن یک سند JSON — مقصد اصلی R2، وگرنه Blob، وگرنه فایل محلی. کش باطل می‌شود */
+/** نوشتن یک سند JSON در Blob (یا فایل محلی) — کش این کلید باطل می‌شود */
 async function writeJSON(key: string, value: unknown): Promise<void> {
   // کش قدیمی دیگر معتبر نیست؛ پیش از نوشتن حذفش می‌کنیم تا خواندنِ
-  // بعدی حتماً نسخه‌ی تازه را از منبع بگیرد.
+  // بعدی حتماً نسخه‌ی تازه را از Blob بگیرد.
   invalidate(key);
-  // ۱) R2
-  if (r2Enabled()) {
-    await r2Put(key, encryptJSON(value));
-    return;
-  }
-  // ۲) Blob
   if (blobApi) {
     await blobPut(key, encryptJSON(value));
     return;
